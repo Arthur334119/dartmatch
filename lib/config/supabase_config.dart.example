@@ -1,7 +1,6 @@
 class SupabaseConfig {
-  // WICHTIG: Ersetze den Anon Key mit deinem vollständigen Key aus dem Supabase Dashboard
-  static const String supabaseUrl = 'https://lnvfhyiudwbcasaiggzl.supabase.co';
-  static const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxudmZoeWl1ZHdiY2FzYWlnZ3psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNjIyNDYsImV4cCI6MjA5MjkzODI0Nn0.0GzClghqX4SNvWcIlqz9ONf0S3cHJv78hWP8NfEQV6I'; // ← aus Supabase Dashboard kopieren
+  static const String supabaseUrl = 'https://YOUR_PROJECT_ID.supabase.co';
+  static const String supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
 
   // Table names
   static const String barsTable = 'bars';
