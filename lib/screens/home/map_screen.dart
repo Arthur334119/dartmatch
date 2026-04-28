@@ -21,6 +21,7 @@ class _MapScreenState extends State<MapScreen> {
   final _service = SupabaseService();
   final _location = LocationService();
   final _mapController = MapController();
+  final _searchCtrl = TextEditingController();
 
   List<Bar> _bars = [];
   List<Bar> _filteredBars = [];
@@ -35,6 +36,13 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _init();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _mapController.dispose();
+    super.dispose();
   }
 
   Future<void> _init() async {
@@ -67,12 +75,19 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  void _applyFilter(String? game) {
+  void _applyFilter({String? game}) {
     setState(() {
-      _selectedGame = game == 'Alle' ? null : game;
-      _filteredBars = _selectedGame == null
-          ? _bars
-          : _bars.where((b) => b.games.contains(_selectedGame)).toList();
+      if (game != null) {
+        _selectedGame = game == 'Alle' ? null : game;
+      }
+      _filteredBars = _bars.where((b) {
+        final matchGame = _selectedGame == null || b.games.contains(_selectedGame);
+        final q = _searchCtrl.text.trim().toLowerCase();
+        final matchSearch = q.isEmpty ||
+            b.name.toLowerCase().contains(q) ||
+            b.address.toLowerCase().contains(q);
+        return matchGame && matchSearch;
+      }).toList();
     });
   }
 
@@ -86,28 +101,45 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // bottom sheet height: ~240 px when no bar selected, ~360 with selected bar
+    const bottomSheetHeight = 240.0;
+
     return Scaffold(
       body: Stack(
         children: [
           _buildMap(),
           if (_isLoading)
             const Center(child: CircularProgressIndicator()),
+
+          // Search bar at top
           Positioned(
             top: MediaQuery.of(context).padding.top + 12,
             left: 16,
             right: 16,
             child: _buildSearchBar(theme),
           ),
+
+          // Bottom sheet
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
             child: _buildBottomSheet(theme),
           ),
+
+          // Filter FAB above the bottom sheet
+          Positioned(
+            right: 16,
+            bottom: bottomSheetHeight + 12,
+            child: FloatingActionButton.extended(
+              heroTag: 'filter_fab',
+              onPressed: _showFilterSheet,
+              icon: const Icon(Icons.tune),
+              label: Text(_selectedGame ?? 'Filter'),
+            ),
+          ),
         ],
       ),
-      floatingActionButton: _buildFilterFAB(theme),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endContained,
     );
   }
 
@@ -123,7 +155,10 @@ class _MapScreenState extends State<MapScreen> {
         initialZoom: AppConstants.defaultZoom,
         maxZoom: AppConstants.maxZoom,
         minZoom: AppConstants.minZoom,
-        onTap: (_, __) => setState(() => _selectedBar = null),
+        onTap: (_, __) {
+          setState(() => _selectedBar = null);
+          FocusScope.of(context).unfocus();
+        },
       ),
       children: [
         TileLayer(
@@ -134,7 +169,8 @@ class _MapScreenState extends State<MapScreen> {
           MarkerLayer(
             markers: [
               Marker(
-                point: LatLng(_userPosition!.latitude, _userPosition!.longitude),
+                point: LatLng(
+                    _userPosition!.latitude, _userPosition!.longitude),
                 width: 24,
                 height: 24,
                 child: Container(
@@ -169,17 +205,21 @@ class _MapScreenState extends State<MapScreen> {
       child: GestureDetector(
         onTap: () {
           setState(() => _selectedBar = bar);
+          FocusScope.of(context).unfocus();
           _mapController.move(
-            LatLng(bar.latitude - 0.002, bar.longitude),
-            14,
+            LatLng(bar.latitude - 0.003, bar.longitude),
+            14.5,
           );
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : AppColors.primary.withValues(alpha: 0.85),
+            color: isSelected
+                ? AppColors.primary
+                : AppColors.primary.withValues(alpha: 0.85),
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: isSelected ? 3 : 2),
+            border:
+                Border.all(color: Colors.white, width: isSelected ? 3 : 2),
             boxShadow: [
               BoxShadow(
                 color: AppColors.primary.withValues(alpha: 0.4),
@@ -187,7 +227,8 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ],
           ),
-          child: const Icon(Icons.sports_bar, color: Colors.white, size: 18),
+          child: const Icon(Icons.sports_bar,
+              color: Colors.white, size: 18),
         ),
       ),
     );
@@ -210,29 +251,50 @@ class _MapScreenState extends State<MapScreen> {
       child: Row(
         children: [
           const SizedBox(width: 12),
-          const Icon(Icons.search, color: AppColors.textMuted),
+          const Icon(Icons.search, color: AppColors.textMuted, size: 20),
           const SizedBox(width: 8),
-          Text(
-            'Bars in Berlin suchen...',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppColors.textMuted,
+          Expanded(
+            child: TextField(
+              controller: _searchCtrl,
+              decoration: InputDecoration(
+                hintText: 'Bar suchen...',
+                hintStyle: theme.textTheme.bodyMedium
+                    ?.copyWith(color: AppColors.textMuted),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                filled: false,
+                contentPadding: EdgeInsets.zero,
+                isDense: true,
+              ),
+              onChanged: (_) => _applyFilter(),
+              onTap: () {},
             ),
           ),
-          const Spacer(),
-          if (_userPosition != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: IconButton(
-                icon: const Icon(Icons.my_location,
-                    color: AppColors.primary, size: 20),
-                onPressed: () => _mapController.move(
-                  LatLng(_userPosition!.latitude, _userPosition!.longitude),
-                  AppConstants.defaultZoom,
-                ),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+          if (_searchCtrl.text.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.close, size: 18,
+                  color: AppColors.textMuted),
+              onPressed: () {
+                _searchCtrl.clear();
+                _applyFilter();
+              },
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36),
+            )
+          else if (_userPosition != null)
+            IconButton(
+              icon: const Icon(Icons.my_location,
+                  color: AppColors.primary, size: 20),
+              onPressed: () => _mapController.move(
+                LatLng(
+                    _userPosition!.latitude, _userPosition!.longitude),
+                AppConstants.defaultZoom,
               ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36),
             ),
+          const SizedBox(width: 4),
         ],
       ),
     );
@@ -242,7 +304,8 @@ class _MapScreenState extends State<MapScreen> {
     return Container(
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius:
+            const BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.12),
@@ -270,10 +333,26 @@ class _MapScreenState extends State<MapScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Ausgewählt',
-                      style: theme.textTheme.labelSmall
-                          ?.copyWith(color: AppColors.textMuted)),
-                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Ausgewählt',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                              color: AppColors.textMuted)),
+                      TextButton(
+                        onPressed: () => setState(() => _selectedBar = null),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text('Schließen',
+                            style: TextStyle(
+                                color: AppColors.textMuted, fontSize: 12)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
                   BarCard(
                     bar: _selectedBar!,
                     compact: true,
@@ -282,7 +361,7 @@ class _MapScreenState extends State<MapScreen> {
                 ],
               ),
             ),
-            const Divider(height: 20),
+            const Divider(height: 16),
           ],
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -291,7 +370,9 @@ class _MapScreenState extends State<MapScreen> {
               children: [
                 Text(
                   _selectedGame == null
-                      ? 'Top Bars in der Nähe'
+                      ? _searchCtrl.text.isNotEmpty
+                          ? 'Suchergebnisse'
+                          : 'Bars in der Nähe'
                       : '$_selectedGame Bars',
                   style: theme.textTheme.titleSmall
                       ?.copyWith(fontWeight: FontWeight.w700),
@@ -306,35 +387,35 @@ class _MapScreenState extends State<MapScreen> {
           ),
           const SizedBox(height: 8),
           SizedBox(
-            height: 170,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: _filteredBars.take(10).length,
-              itemBuilder: (_, i) {
-                final bar = _filteredBars[i];
-                return SizedBox(
-                  width: 240,
-                  child: BarCard(
-                    bar: bar,
-                    compact: true,
-                    onTap: () => _openBarDetail(bar),
+            height: 160,
+            child: _filteredBars.isEmpty
+                ? Center(
+                    child: Text('Keine Bars gefunden',
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(color: AppColors.textMuted)),
+                  )
+                : ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: _filteredBars.length,
+                    itemBuilder: (_, i) {
+                      final bar = _filteredBars[i];
+                      return SizedBox(
+                        width: 240,
+                        child: BarCard(
+                          bar: bar,
+                          compact: true,
+                          onTap: () => _openBarDetail(bar),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(
+              height: MediaQuery.of(context).padding.bottom + 8),
         ],
       ),
-    );
-  }
-
-  Widget _buildFilterFAB(ThemeData theme) {
-    return FloatingActionButton.extended(
-      onPressed: _showFilterSheet,
-      icon: const Icon(Icons.tune),
-      label: Text(_selectedGame ?? 'Filter'),
     );
   }
 
@@ -359,30 +440,26 @@ class _MapScreenState extends State<MapScreen> {
               spacing: 8,
               runSpacing: 8,
               children: _gameFilters.map((game) {
-                final isSelected = (_selectedGame == null && game == 'Alle') ||
-                    _selectedGame == game;
+                final isSelected =
+                    (_selectedGame == null && game == 'Alle') ||
+                        _selectedGame == game;
                 return FilterChip(
                   label: Text(game),
                   selected: isSelected,
                   onSelected: (_) {
-                    _applyFilter(game);
+                    _applyFilter(game: game);
                     Navigator.pop(ctx);
                   },
-                  selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                  selectedColor:
+                      AppColors.primary.withValues(alpha: 0.15),
                   checkmarkColor: AppColors.primary,
                 );
               }).toList(),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
           ],
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _mapController.dispose();
-    super.dispose();
   }
 }

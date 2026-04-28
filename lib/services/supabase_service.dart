@@ -236,7 +236,61 @@ class SupabaseService {
         .from(SupabaseConfig.postsTable)
         .stream(primaryKey: ['id'])
         .order('created_at', ascending: false)
-        .map((data) => data.map((e) => Post.fromJson(e)).toList());
+        .asyncMap((data) async {
+          final posts = data.map((e) => Post.fromJson(e)).toList();
+          // Enrich with profile and bar data
+          final userIds = posts.map((p) => p.userId).toSet().toList();
+          final barIds = posts
+              .where((p) => p.barId != null)
+              .map((p) => p.barId!)
+              .toSet()
+              .toList();
+
+          Map<String, dynamic> profiles = {};
+          Map<String, String> barNames = {};
+
+          if (userIds.isNotEmpty) {
+            try {
+              final profileData = await _client
+                  .from(SupabaseConfig.profilesTable)
+                  .select('id, username, avatar_url')
+                  .inFilter('id', userIds);
+              for (final p in profileData as List) {
+                profiles[p['id']] = p;
+              }
+            } catch (_) {}
+          }
+
+          if (barIds.isNotEmpty) {
+            try {
+              final barData = await _client
+                  .from(SupabaseConfig.barsTable)
+                  .select('id, name')
+                  .inFilter('id', barIds);
+              for (final b in barData as List) {
+                barNames[b['id']] = b['name'] as String;
+              }
+            } catch (_) {}
+          }
+
+          return posts.map((post) {
+            final profile = profiles[post.userId];
+            return Post(
+              id: post.id,
+              userId: post.userId,
+              barId: post.barId,
+              type: post.type,
+              gameType: post.gameType,
+              content: post.content,
+              playerCount: post.playerCount,
+              expiresAt: post.expiresAt,
+              createdAt: post.createdAt,
+              username: profile?['username'] as String?,
+              avatarUrl: profile?['avatar_url'] as String?,
+              barName: post.barId != null ? barNames[post.barId] : null,
+            );
+          }).toList();
+        });
   }
 
   // ── MESSAGES ──────────────────────────────────────────────────────────────
@@ -354,6 +408,21 @@ class SupabaseService {
                   (m.senderId == otherUserId && m.receiverId == userId))
               .toList();
         });
+  }
+
+  Future<int> getUnreadCount() async {
+    final userId = getCurrentUser()?.id;
+    if (userId == null) return 0;
+    try {
+      final data = await _client
+          .from(SupabaseConfig.messagesTable)
+          .select('id')
+          .eq('receiver_id', userId)
+          .isFilter('read_at', null);
+      return (data as List).length;
+    } catch (_) {
+      return 0;
+    }
   }
 
   // ── PRESENCE ──────────────────────────────────────────────────────────────

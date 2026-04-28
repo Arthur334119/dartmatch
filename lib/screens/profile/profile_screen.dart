@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/user_profile.dart';
 import '../../services/supabase_service.dart';
+import '../../utils/app_state.dart';
 import '../../utils/colors.dart';
 import '../../utils/constants.dart';
 
@@ -15,7 +16,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _service = SupabaseService();
   UserProfile? _profile;
   bool _isLoading = true;
-  bool _isDarkMode = false;
 
   @override
   void initState() {
@@ -229,8 +229,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             title: const Text('Dark Mode'),
             subtitle: const Text('Dunkles Design aktivieren'),
             secondary: const Icon(Icons.dark_mode_outlined),
-            value: _isDarkMode,
-            onChanged: (v) => setState(() => _isDarkMode = v),
+            value: AppState.instance.isDark,
+            onChanged: (v) {
+              AppState.instance.setDarkMode(v);
+              setState(() {});
+            },
             activeThumbColor: AppColors.primary,
           ),
           ListTile(
