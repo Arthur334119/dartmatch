@@ -1,0 +1,141 @@
+-- Features (hund/raucher/outdoor/...) für Bars + Pflicht-Avatar für Verifizierung
+
+ALTER TABLE public.bars
+  ADD COLUMN IF NOT EXISTS features JSONB DEFAULT '[]'::jsonb;
+
+CREATE INDEX IF NOT EXISTS bars_features_gin ON public.bars USING GIN (features);
+CREATE INDEX IF NOT EXISTS bars_games_gin ON public.bars USING GIN (games);
+CREATE INDEX IF NOT EXISTS bars_beer_price_idx ON public.bars (beer_price);
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS avatar_url TEXT,
+  ADD COLUMN IF NOT EXISTS email_confirmed_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS phone_verified_at TIMESTAMPTZ;
+
+CREATE OR REPLACE FUNCTION public.is_user_verified(uid UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM auth.users u
+    JOIN public.profiles p ON p.id = u.id
+    WHERE u.id = uid
+      AND u.email_confirmed_at IS NOT NULL
+      AND p.avatar_url IS NOT NULL
+      AND length(p.avatar_url) > 0
+  );
+$$;
+
+DROP POLICY IF EXISTS "Authenticated users can create posts" ON public.posts;
+CREATE POLICY "Verified users can create posts" ON public.posts
+  FOR INSERT
+  WITH CHECK (auth.uid() = user_id AND public.is_user_verified(auth.uid()));
+
+DROP POLICY IF EXISTS "Users can check in" ON public.presence;
+CREATE POLICY "Verified users can check in" ON public.presence
+  FOR INSERT
+  WITH CHECK (auth.uid() = user_id AND public.is_user_verified(auth.uid()));
+
+CREATE POLICY IF NOT EXISTS "Users can delete own presence" ON public.presence
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- ── STORAGE: avatars bucket ─────────────────────────────────────
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'avatars',
+  'avatars',
+  true,
+  5 * 1024 * 1024,
+  ARRAY['image/jpeg', 'image/png', 'image/webp']::text[]
+)
+ON CONFLICT (id) DO UPDATE
+SET public = EXCLUDED.public,
+    file_size_limit = EXCLUDED.file_size_limit,
+    allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+DROP POLICY IF EXISTS "Public avatar read" ON storage.objects;
+CREATE POLICY "Public avatar read" ON storage.objects
+  FOR SELECT USING (bucket_id = 'avatars');
+
+DROP POLICY IF EXISTS "Users upload own avatar" ON storage.objects;
+CREATE POLICY "Users upload own avatar" ON storage.objects
+  FOR INSERT WITH CHECK (
+    bucket_id = 'avatars'
+    AND auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+DROP POLICY IF EXISTS "Users update own avatar" ON storage.objects;
+CREATE POLICY "Users update own avatar" ON storage.objects
+  FOR UPDATE USING (
+    bucket_id = 'avatars'
+    AND auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+DROP POLICY IF EXISTS "Users delete own avatar" ON storage.objects;
+CREATE POLICY "Users delete own avatar" ON storage.objects
+  FOR DELETE USING (
+    bucket_id = 'avatars'
+    AND auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+-- Seed: 50+ Berliner Bars mit Geo, Spielen, Features, Bierpreis
+-- Nach 20260429_features_and_verification.sql ausführen.
+
+INSERT INTO public.bars (name, description, address, latitude, longitude, beer_price, games, features, opening_hours)
+VALUES
+  ('Billard House', 'Billard-Palast mit 18 Pool-Tischen, 3 Snookertischen, 5 Dartscheiben und Pokertischen auf zwei Etagen. 24h geöffnet.', 'Rudolfstraße 4, 10245 Berlin', 52.5033812, 13.4557239, 3.60, '["billard","dart","kicker","karten"]'::jsonb, '["smoking","outdoor"]'::jsonb, '{}'::jsonb),
+  ('Billard Company', 'Etablierter Billardsalon mit Ladies Nights und freundlicher Atmosphäre.', 'Bouchéstraße 12, 12435 Berlin', 52.4932004, 13.4493641, 2.30, '["billard","dart"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Pool-Inn', 'Große Halle mit Holzboden, Lounge-Bereich und sonniger Terrasse.', 'Wönnichstraße 68, 10317 Berlin', 52.5046360, 13.4960719, 3.20, '["billard","dart","kicker"]'::jsonb, '["outdoor","dog_friendly"]'::jsonb, '{}'::jsonb),
+  ('Kickerbar Platzwart', '3 Profi-Kickertische, Heimspielstätte des 1. Tischfussball Club Berlin. Donnerstags Nichtrauchertag.', 'Manteuffelstraße 110, 10997 Berlin', 52.5017960, 13.4285483, 2.50, '["kicker"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Tante Käthe Fußballkneipe', '10 Kickertische, Live-Fußball auf 4 Screens, monatliches Kneipenquiz und regelmäßige Turniere.', 'Bernauer Straße 63, 13355 Berlin', 52.5409538, 13.4027196, 3.00, '["kicker"]'::jsonb, '["outdoor","dog_friendly"]'::jsonb, '{}'::jsonb),
+  ('Flipperhalle Berlin', 'Über 25 historische Flipper-Automaten, Reparatur und Restaurierung vor Ort. 10€ Eintritt.', 'Kleinmachnower Weg 8, 14165 Berlin', 52.4089803, 13.2653011, 3.00, '["flipper"]'::jsonb, '[]'::jsonb, '{}'::jsonb),
+  ('Feuermelder', 'Legendäre Eckkneipe seit DDR-Zeiten am Boxhagener Platz. Rocker-Charme, Flipper und Pool.', 'Krossener Straße 24, 10245 Berlin', 52.5101514, 13.4601454, 2.80, '["flipper","billard","kicker"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Die Darterei Berlin', 'Dart-Paradies mit 17 Boards, Steeldarts, E-Darts und digitaler Scoring-Technik. Workshops für Anfänger und Profis.', 'Berliner Allee 106, 13088 Berlin', 52.5500380, 13.4594780, 3.50, '["dart"]'::jsonb, '["outdoor"]'::jsonb, '{}'::jsonb),
+  ('Dart Palast Berlin', 'Community-fokussierter Dart-Club mit Liga- und Turnierbetrieb in entspannter Sportatmosphäre.', 'Oranienburger Straße 175, 13437 Berlin', 52.5997757, 13.3316611, 3.20, '["dart","kicker"]'::jsonb, '[]'::jsonb, '{}'::jsonb),
+  ('Lane7 Berlin', 'Game-Bar am Potsdamer Platz mit Bowling, Minigolf, Shuffleboard, Karaoke und Steeldarts.', 'Linkstraße 2, 10785 Berlin', 52.5078939, 13.3749025, 5.50, '["dart","bowling","minigolf","karaoke"]'::jsonb, '["outdoor"]'::jsonb, '{}'::jsonb),
+  ('Café Alcatraz', 'Gemütliche Eckkneipe mit Dartautomat und Billardtisch. Traditionelle Pub-Atmosphäre, faire Preise.', 'Wilsnacker Straße 30, 10559 Berlin', 52.5309084, 13.3507770, 2.80, '["dart","billard"]'::jsonb, '["dog_friendly"]'::jsonb, '{}'::jsonb),
+  ('Electric Social', '50+ Arcade-Klassiker, digitale Dart-Boards, Karaoke und Quiz nahe Alexanderplatz.', 'Grunerstraße 13, 10179 Berlin', 52.5199839, 13.4129192, 4.50, '["dart","flipper"]'::jsonb, '["outdoor"]'::jsonb, '{}'::jsonb),
+  ('Geronimo', 'Eine der populärsten Kickerkneipen Berlins mit dem berühmten roten Tisch. Werktags ab 17h.', 'Sonntagstraße 9, 10245 Berlin', 52.5058221, 13.4664165, 3.20, '["kicker"]'::jsonb, '["smoking","outdoor"]'::jsonb, '{}'::jsonb),
+  ('Laika', 'Studentenkneipe mit günstigem Sterni, Kickertisch (50 Cent/Spiel), Spieleabende und Kunstveranstaltungen.', 'Emser Straße 131, 12051 Berlin', 52.4692895, 13.4379982, 2.20, '["kicker"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Wiener Blut', 'Klassiker mit schummrigem Licht, Punkmusik, dunkelrot gestrichen. Rock und Rockabilly.', 'Wiener Straße 14, 10999 Berlin', 52.4980497, 13.4292240, 2.50, '["kicker"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Tristeza', 'Kollektiv-Bar mit günstigem Sterni, FLINTA*-Runde mittwochs. Kicker ab 21h.', 'Pannierstraße 5, 12047 Berlin', 52.4864595, 13.4308570, 1.80, '["kicker"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Jatz Bar', 'Zwei Kickertische, Hausverein Jatzkicker Berlin mit drei Liga-Teams seit 2012.', 'Gottschedstraße 2, 13357 Berlin', 52.5502460, 13.3690583, 2.50, '["kicker"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Hase', 'Kleine Fußballkneipe – die Wirte sind Kickerprofis.', 'Gabriel-Max-Straße 3, 10247 Berlin', 52.5099489, 13.4582773, 3.00, '["kicker"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Pörx', 'Wohlfühlkneipe – montags kostenlos Kicker spielen.', 'Fürbringerstraße 29, 10961 Berlin', 52.4934349, 13.3956248, 2.80, '["kicker"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Carlotta Bar', 'Echte Kneipe mit Holztheke und Schnaps, lange Öffnungszeiten.', 'Lenbachstraße 10, 10245 Berlin', 52.5050754, 13.4659465, 2.80, '["kicker","karten"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Trommel', 'Solide Kneipe an der Kastanienallee mit Kickertisch im Dauerbetrieb.', 'Kastanienallee 58, 10435 Berlin', 52.5336786, 13.4050796, 3.20, '["kicker"]'::jsonb, '["outdoor","smoking"]'::jsonb, '{}'::jsonb),
+  ('Zimt und Zunder', 'Nichtraucher-Lokal am Boxhagener Platz, kostenlos Kicker und Tischtennis, regelmäßige Turniere.', 'Gärtnerstraße 15, 10245 Berlin', 52.5111929, 13.4612763, 3.50, '["kicker","tischtennis"]'::jsonb, '["dog_friendly"]'::jsonb, '{}'::jsonb),
+  ('Zum Böhmischen Dorf', 'Pilsner Urquell aus dem Tank, Kerzen und gedimmtes Licht. Echtes böhmisches Feeling.', 'Sanderstraße 11, 12047 Berlin', 52.4923185, 13.4260040, 3.20, '["karten"]'::jsonb, '["outdoor"]'::jsonb, '{}'::jsonb),
+  ('Metzer Eck', 'Über 100 Jahre alte Familienkneipe mit deftiger Berliner Küche. Eisbein freitags. Rauchfrei.', 'Metzer Straße 33, 10405 Berlin', 52.5317831, 13.4162151, 3.00, '["karten"]'::jsonb, '["outdoor"]'::jsonb, '{}'::jsonb),
+  ('Gaststätte Willy Bresch', 'Fast 50 Jahre alt, rustikal, perfekt zum Fußball schauen.', 'Danziger Straße 120, 10407 Berlin', 52.5358090, 13.4331924, 2.50, '["karten"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Zum Anker', 'Kiezkneipe nahe Schloss Charlottenburg mit Billardtisch.', 'Lohmeyerstraße 16, 14059 Berlin', 52.5210249, 13.3023937, 3.00, '["billard","karten"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Trude Ruth & Goldammer', 'Dunkel und gemütlich, große Getränkeauswahl, Nüsse zum Snacken.', 'Flughafenstraße 38, 12053 Berlin', 52.4812689, 13.4280825, 3.50, '["karten"]'::jsonb, '[]'::jsonb, '{}'::jsonb),
+  ('Oberbaumeck', 'Punker-Eckkneipe mit sechs Fassbieren. St. Pauli-Spiele live.', 'Bevernstraße 5, 10997 Berlin', 52.5014606, 13.4426482, 2.50, '["kicker"]'::jsonb, '["smoking","dog_friendly"]'::jsonb, '{}'::jsonb),
+  ('Zur Quelle', 'Berühmteste Eckkneipe Moabits. 24h geöffnet, sehr beliebt, jukebox-rotgelbe Fassade.', 'Alt-Moabit 87, 10559 Berlin', 52.5251840, 13.3432467, 2.00, '["karten"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Bienenkorb', 'Eckkneipe mit Holztresen, Spielautomaten und liebenswertem Personal.', 'Maximiliankorso 1, 13465 Berlin', 52.6332349, 13.2876691, 2.20, '["dart","karten"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Sandmann Neukölln', 'Café und Kiezkneipe gemischt, Live-Musik, lockerer Umgangston.', 'Reuterstraße 7, 12053 Berlin', 52.4819964, 13.4293066, 3.00, '[]'::jsonb, '["outdoor","dog_friendly"]'::jsonb, '{}'::jsonb),
+  ('Stadtklause', 'Holziges Interieur, niedrige Decke, Berliner Küche mit Schnaps-Grundlage.', 'Bernburger Straße 30, 10963 Berlin', 52.5047924, 13.3796369, 3.20, '["karten"]'::jsonb, '[]'::jsonb, '{}'::jsonb),
+  ('Krüger Eck', 'Fast 100 Jahre alt, Film-Drehort, preiswert, Bockwurst mit Kartoffelsalat.', 'Weserstraße 12, 12047 Berlin', 52.4874927, 13.4300678, 2.50, '["dart","karten"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Tiergartenquelle', 'Alte Fotos und Bierdeckel an Wänden, Zwickel-Bier von Lemke, warme Küche, Biergarten.', 'Bachstraße 6, 10555 Berlin', 52.5169055, 13.3379601, 3.50, '["karten"]'::jsonb, '["outdoor","dog_friendly"]'::jsonb, '{}'::jsonb),
+  ('Wilhelm Hoeck 1892', 'Über 130 Jahre alt, historischer Schankraum, Berliner Kindl-Bier, Montag Schnitzeltag.', 'Wilmersdorfer Straße 149, 10585 Berlin', 52.5139230, 13.3050769, 3.20, '["karten"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Dicke Wirtin', 'Am Savignyplatz, Erinnerungsnippes, Holzeinrichtung, Currywurst und Schweinebraten.', 'Carmerstraße 9, 10623 Berlin', 52.5064674, 13.3235874, 3.50, '["karten"]'::jsonb, '["dog_friendly"]'::jsonb, '{}'::jsonb),
+  ('Lerchen und Eulen', 'Secondhand-Mobiliar, schöne Terrasse, sehr beliebt.', 'Pücklerstraße 33, 10997 Berlin', 52.5019321, 13.4305892, 3.50, '["karten"]'::jsonb, '["outdoor"]'::jsonb, '{}'::jsonb),
+  ('Freya Fuchs', 'Wohnzimmerbar mit günstigen Preisen und Raucherzimmer.', 'Tegeler Straße 34, 13353 Berlin', 52.5418709, 13.3568277, 2.20, '["karten"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Sieben', 'Wohnzimmerbar mit Efeu-Dekoration und Außenbereich.', 'Sonntagstraße 6, 10245 Berlin', 52.5053360, 13.4674276, 3.00, '["karten"]'::jsonb, '["outdoor"]'::jsonb, '{}'::jsonb),
+  ('Bei Schlawinchen', 'Durchgehend geöffnet, preisgünstiges Bier, Vintage-Deko mit verstaubten Schätzen.', 'Schönleinstraße 34, 10967 Berlin', 52.4926717, 13.4217105, 2.20, '["karten"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Stammtisch', 'Ruhige Eckkneipe mit Kleinkunstbühne und Stammgästen.', 'Weserstraße 159, 12045 Berlin', 52.4824813, 13.4430897, 2.50, '["karten"]'::jsonb, '["dog_friendly"]'::jsonb, '{}'::jsonb),
+  ('Travolta', 'Unkompliziert, lange geöffnet bis in die frühen Morgenstunden, entspannt.', 'Wiener Straße 14, 10999 Berlin', 52.4980497, 13.4292240, 2.50, '["kicker","flipper"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Clash', 'Im Mehringhof. Zwei Kicker, rockige Kneipe, Konzerte am Wochenende, hauseigenes Bier.', 'Gneisenaustraße 2a, 10961 Berlin', 52.4919487, 13.3889569, 2.80, '["kicker","billard","flipper"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('FKK', 'Friedrichshainer Kicker Kultur. Vier Tische kostenlos, Dienstags Turnier ab 19 Uhr.', 'Krossener Straße 11, 10245 Berlin', 52.5106870, 13.4582338, 2.20, '["kicker","flipper"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Madame Claude', 'Umgedrehte Einrichtung an der Decke, Konzerte und Lesungen, Nebenraum mit Kickertisch.', 'Lübbener Straße 19, 10997 Berlin', 52.4996096, 13.4374056, 3.00, '["kicker"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Café Morgenrot', 'Kollektivbetrieb mit veganer Küche, entspannte Atmosphäre, Sterni für 2.20€.', 'Kastanienallee 85, 10435 Berlin', 52.5373900, 13.4092293, 2.20, '["karten"]'::jsonb, '["outdoor"]'::jsonb, '{}'::jsonb),
+  ('Prager Frühling', 'Tschechische Bier-Bar im Florakiez. Helles Svijansky Maz für 2.90€.', 'Berliner Straße 113, 13189 Berlin', 52.5655237, 13.4129109, 2.90, '["karten"]'::jsonb, '["outdoor","smoking"]'::jsonb, '{}'::jsonb),
+  ('Linie 1', 'Bequeme Kinosessel, Darts, Flipper, Billard und Tischfußball. 0,5l Berliner Pilsener für 2€.', 'Köpenicker Straße 188, 10997 Berlin', 52.5019418, 13.4388005, 2.00, '["dart","flipper","billard","kicker"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Billardaire', 'Ältester Billardsalon Berlins mit 12 Pool-, 3 Snooker- und einem Carambolage-Tisch.', 'Hauptstraße 19, 10827 Berlin', 52.4866863, 13.3565228, 3.50, '["billard","snooker"]'::jsonb, '["smoking"]'::jsonb, '{}'::jsonb),
+  ('Bata Bar Billiards', 'Premium-Billiard nahe Alexanderplatz mit 12 Tischen, ausgezeichnete Cocktailauswahl.', 'Karl-Liebknecht-Straße 13, 10178 Berlin', 52.5227223, 13.4096521, 4.50, '["billard","dart"]'::jsonb, '[]'::jsonb, '{}'::jsonb),
+  ('Bei Manni', 'Klassische Kiezkneipe mit Skat-Tisch, Bockwurst und Stammtisch.', 'Hartmannsweilerweg 50, 14163 Berlin', 52.4434565, 13.2469884, 2.80, '["karten","dart"]'::jsonb, '["outdoor","dog_friendly"]'::jsonb, '{}'::jsonb);
+

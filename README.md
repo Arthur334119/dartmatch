@@ -1,17 +1,34 @@
-# dartmatch
+# Kneipenfinder
 
-A new Flutter project.
+Expo/React-Native-App für Berliner Kneipen — Karte, Bewertungen, Check-ins, Community-Posts.
 
-## Getting Started
+## Stack
 
-This project is a starting point for a Flutter application.
+- Expo SDK 54 + Expo Router (TypeScript)
+- Supabase (Auth, Postgres, Storage, RLS)
+- `react-native-maps` mit OpenStreetMap-Tiles
+- `expo-image-picker`, `expo-location`, `expo-secure-store`
 
-A few resources to get you started if this is your first Flutter project:
+## Loslegen
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```bash
+npm install
+npx expo run:ios --device   # Native Build aufs iPhone (USB)
+# oder
+npx expo run:android
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+`react-native-maps` braucht Native-Code, daher kein Expo Go — `expo run:ios/android` ist nötig.
+
+## Struktur
+
+- `app/` — Expo-Router-Routen (Auth-Gate, Tabs, Bar-Detail, Post-Create)
+- `components/` — `BarCard`, `PostCard`, `StarRow`
+- `lib/` — Supabase-Client, Auth-Helpers, Data-Layer, Konstanten
+- `supabase/migrations/` — DB-Schema + RLS-Policies
+
+## Migrations
+
+```bash
+supabase db push
+```

@@ -1,0 +1,794 @@
+[
+  {
+    "name": "Billard House",
+    "address": "Rudolfstraße 4, 10245 Berlin",
+    "district": "Friedrichshain",
+    "games": [
+      "billard",
+      "dart",
+      "kicker",
+      "karten"
+    ],
+    "features": [
+      "smoking",
+      "outdoor"
+    ],
+    "beer_price": 3.60,
+    "description": "Billard-Palast mit 18 Pool-Tischen, 3 Snookertischen, 5 Dartscheiben und Pokertischen auf zwei Etagen. 24h geöffnet.",
+    "latitude": 52.5033812,
+    "longitude": 13.4557239
+  },
+  {
+    "name": "Billard Company",
+    "address": "Bouchéstraße 12, 12435 Berlin",
+    "district": "Treptow",
+    "games": [
+      "billard",
+      "dart"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 2.30,
+    "description": "Etablierter Billardsalon mit Ladies Nights und freundlicher Atmosphäre.",
+    "latitude": 52.4932004,
+    "longitude": 13.4493641
+  },
+  {
+    "name": "Pool-Inn",
+    "address": "Wönnichstraße 68, 10317 Berlin",
+    "district": "Lichtenberg",
+    "games": [
+      "billard",
+      "dart",
+      "kicker"
+    ],
+    "features": [
+      "outdoor",
+      "dog_friendly"
+    ],
+    "beer_price": 3.20,
+    "description": "Große Halle mit Holzboden, Lounge-Bereich und sonniger Terrasse.",
+    "latitude": 52.5046360,
+    "longitude": 13.4960719
+  },
+  {
+    "name": "Kickerbar Platzwart",
+    "address": "Manteuffelstraße 110, 10997 Berlin",
+    "district": "Kreuzberg",
+    "games": [
+      "kicker"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 2.50,
+    "description": "3 Profi-Kickertische, Heimspielstätte des 1. Tischfussball Club Berlin. Donnerstags Nichtrauchertag.",
+    "latitude": 52.5017960,
+    "longitude": 13.4285483
+  },
+  {
+    "name": "Tante Käthe Fußballkneipe",
+    "address": "Bernauer Straße 63, 13355 Berlin",
+    "district": "Wedding",
+    "games": [
+      "kicker"
+    ],
+    "features": [
+      "outdoor",
+      "dog_friendly"
+    ],
+    "beer_price": 3.00,
+    "description": "10 Kickertische, Live-Fußball auf 4 Screens, monatliches Kneipenquiz und regelmäßige Turniere.",
+    "latitude": 52.5409538,
+    "longitude": 13.4027196
+  },
+  {
+    "name": "Flipperhalle Berlin",
+    "address": "Kleinmachnower Weg 8, 14165 Berlin",
+    "district": "Zehlendorf",
+    "games": [
+      "flipper"
+    ],
+    "features": [],
+    "beer_price": 3.00,
+    "description": "Über 25 historische Flipper-Automaten, Reparatur und Restaurierung vor Ort. 10€ Eintritt.",
+    "latitude": 52.4089803,
+    "longitude": 13.2653011
+  },
+  {
+    "name": "Feuermelder",
+    "address": "Krossener Straße 24, 10245 Berlin",
+    "district": "Friedrichshain",
+    "games": [
+      "flipper",
+      "billard",
+      "kicker"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 2.80,
+    "description": "Legendäre Eckkneipe seit DDR-Zeiten am Boxhagener Platz. Rocker-Charme, Flipper und Pool.",
+    "latitude": 52.5101514,
+    "longitude": 13.4601454
+  },
+  {
+    "name": "Die Darterei Berlin",
+    "address": "Berliner Allee 106, 13088 Berlin",
+    "district": "Weißensee",
+    "games": [
+      "dart"
+    ],
+    "features": [
+      "outdoor"
+    ],
+    "beer_price": 3.50,
+    "description": "Dart-Paradies mit 17 Boards, Steeldarts, E-Darts und digitaler Scoring-Technik. Workshops für Anfänger und Profis.",
+    "latitude": 52.5500380,
+    "longitude": 13.4594780
+  },
+  {
+    "name": "Dart Palast Berlin",
+    "address": "Oranienburger Straße 175, 13437 Berlin",
+    "district": "Reinickendorf",
+    "games": [
+      "dart",
+      "kicker"
+    ],
+    "features": [],
+    "beer_price": 3.20,
+    "description": "Community-fokussierter Dart-Club mit Liga- und Turnierbetrieb in entspannter Sportatmosphäre.",
+    "latitude": 52.5997757,
+    "longitude": 13.3316611
+  },
+  {
+    "name": "Lane7 Berlin",
+    "address": "Linkstraße 2, 10785 Berlin",
+    "district": "Tiergarten",
+    "games": [
+      "dart",
+      "bowling",
+      "minigolf",
+      "karaoke"
+    ],
+    "features": [
+      "outdoor"
+    ],
+    "beer_price": 5.50,
+    "description": "Game-Bar am Potsdamer Platz mit Bowling, Minigolf, Shuffleboard, Karaoke und Steeldarts.",
+    "latitude": 52.5078939,
+    "longitude": 13.3749025
+  },
+  {
+    "name": "Café Alcatraz",
+    "address": "Wilsnacker Straße 30, 10559 Berlin",
+    "district": "Moabit",
+    "games": [
+      "dart",
+      "billard"
+    ],
+    "features": [
+      "dog_friendly"
+    ],
+    "beer_price": 2.80,
+    "description": "Gemütliche Eckkneipe mit Dartautomat und Billardtisch. Traditionelle Pub-Atmosphäre, faire Preise.",
+    "latitude": 52.5309084,
+    "longitude": 13.3507770
+  },
+  {
+    "name": "Electric Social",
+    "address": "Grunerstraße 13, 10179 Berlin",
+    "district": "Mitte",
+    "games": [
+      "dart",
+      "flipper"
+    ],
+    "features": [
+      "outdoor"
+    ],
+    "beer_price": 4.50,
+    "description": "50+ Arcade-Klassiker, digitale Dart-Boards, Karaoke und Quiz nahe Alexanderplatz.",
+    "latitude": 52.5199839,
+    "longitude": 13.4129192
+  },
+  {
+    "name": "Geronimo",
+    "address": "Sonntagstraße 9, 10245 Berlin",
+    "district": "Friedrichshain",
+    "features": [
+      "smoking",
+      "outdoor"
+    ],
+    "games": [
+      "kicker"
+    ],
+    "beer_price": 3.20,
+    "description": "Eine der populärsten Kickerkneipen Berlins mit dem berühmten roten Tisch. Werktags ab 17h.",
+    "latitude": 52.5058221,
+    "longitude": 13.4664165
+  },
+  {
+    "name": "Laika",
+    "address": "Emser Straße 131, 12051 Berlin",
+    "district": "Neukölln",
+    "games": [
+      "kicker"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 2.20,
+    "description": "Studentenkneipe mit günstigem Sterni, Kickertisch (50 Cent/Spiel), Spieleabende und Kunstveranstaltungen.",
+    "latitude": 52.4692895,
+    "longitude": 13.4379982
+  },
+  {
+    "name": "Wiener Blut",
+    "address": "Wiener Straße 14, 10999 Berlin",
+    "district": "Kreuzberg",
+    "games": [
+      "kicker"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 2.50,
+    "description": "Klassiker mit schummrigem Licht, Punkmusik, dunkelrot gestrichen. Rock und Rockabilly.",
+    "latitude": 52.4980497,
+    "longitude": 13.4292240
+  },
+  {
+    "name": "Tristeza",
+    "address": "Pannierstraße 5, 12047 Berlin",
+    "district": "Neukölln",
+    "games": [
+      "kicker"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 1.80,
+    "description": "Kollektiv-Bar mit günstigem Sterni, FLINTA*-Runde mittwochs. Kicker ab 21h.",
+    "latitude": 52.4864595,
+    "longitude": 13.4308570
+  },
+  {
+    "name": "Jatz Bar",
+    "address": "Gottschedstraße 2, 13357 Berlin",
+    "district": "Wedding",
+    "games": [
+      "kicker"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 2.50,
+    "description": "Zwei Kickertische, Hausverein Jatzkicker Berlin mit drei Liga-Teams seit 2012.",
+    "latitude": 52.5502460,
+    "longitude": 13.3690583
+  },
+  {
+    "name": "Hase",
+    "address": "Gabriel-Max-Straße 3, 10247 Berlin",
+    "district": "Friedrichshain",
+    "games": [
+      "kicker"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 3.00,
+    "description": "Kleine Fußballkneipe – die Wirte sind Kickerprofis.",
+    "latitude": 52.5099489,
+    "longitude": 13.4582773
+  },
+  {
+    "name": "Pörx",
+    "address": "Fürbringerstraße 29, 10961 Berlin",
+    "district": "Kreuzberg",
+    "games": [
+      "kicker"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 2.80,
+    "description": "Wohlfühlkneipe – montags kostenlos Kicker spielen.",
+    "latitude": 52.4934349,
+    "longitude": 13.3956248
+  },
+  {
+    "name": "Carlotta Bar",
+    "address": "Lenbachstraße 10, 10245 Berlin",
+    "district": "Friedrichshain",
+    "games": [
+      "kicker",
+      "karten"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 2.80,
+    "description": "Echte Kneipe mit Holztheke und Schnaps, lange Öffnungszeiten.",
+    "latitude": 52.5050754,
+    "longitude": 13.4659465
+  },
+  {
+    "name": "Trommel",
+    "address": "Kastanienallee 58, 10435 Berlin",
+    "district": "Prenzlauer Berg",
+    "games": [
+      "kicker"
+    ],
+    "features": [
+      "outdoor",
+      "smoking"
+    ],
+    "beer_price": 3.20,
+    "description": "Solide Kneipe an der Kastanienallee mit Kickertisch im Dauerbetrieb.",
+    "latitude": 52.5336786,
+    "longitude": 13.4050796
+  },
+  {
+    "name": "Zimt und Zunder",
+    "address": "Gärtnerstraße 15, 10245 Berlin",
+    "district": "Friedrichshain",
+    "games": [
+      "kicker",
+      "tischtennis"
+    ],
+    "features": [
+      "dog_friendly"
+    ],
+    "beer_price": 3.50,
+    "description": "Nichtraucher-Lokal am Boxhagener Platz, kostenlos Kicker und Tischtennis, regelmäßige Turniere.",
+    "latitude": 52.5111929,
+    "longitude": 13.4612763
+  },
+  {
+    "name": "Zum Böhmischen Dorf",
+    "address": "Sanderstraße 11, 12047 Berlin",
+    "district": "Neukölln",
+    "games": [
+      "karten"
+    ],
+    "features": [
+      "outdoor"
+    ],
+    "beer_price": 3.20,
+    "description": "Pilsner Urquell aus dem Tank, Kerzen und gedimmtes Licht. Echtes böhmisches Feeling.",
+    "latitude": 52.4923185,
+    "longitude": 13.4260040
+  },
+  {
+    "name": "Metzer Eck",
+    "address": "Metzer Straße 33, 10405 Berlin",
+    "district": "Prenzlauer Berg",
+    "games": [
+      "karten"
+    ],
+    "features": [
+      "outdoor"
+    ],
+    "beer_price": 3.00,
+    "description": "Über 100 Jahre alte Familienkneipe mit deftiger Berliner Küche. Eisbein freitags. Rauchfrei.",
+    "latitude": 52.5317831,
+    "longitude": 13.4162151
+  },
+  {
+    "name": "Gaststätte Willy Bresch",
+    "address": "Danziger Straße 120, 10407 Berlin",
+    "district": "Prenzlauer Berg",
+    "games": [
+      "karten"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 2.50,
+    "description": "Fast 50 Jahre alt, rustikal, perfekt zum Fußball schauen.",
+    "latitude": 52.5358090,
+    "longitude": 13.4331924
+  },
+  {
+    "name": "Zum Anker",
+    "address": "Lohmeyerstraße 16, 14059 Berlin",
+    "district": "Charlottenburg",
+    "games": [
+      "billard",
+      "karten"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 3.00,
+    "description": "Kiezkneipe nahe Schloss Charlottenburg mit Billardtisch.",
+    "latitude": 52.5210249,
+    "longitude": 13.3023937
+  },
+  {
+    "name": "Trude Ruth & Goldammer",
+    "address": "Flughafenstraße 38, 12053 Berlin",
+    "district": "Neukölln",
+    "games": [
+      "karten"
+    ],
+    "features": [],
+    "beer_price": 3.50,
+    "description": "Dunkel und gemütlich, große Getränkeauswahl, Nüsse zum Snacken.",
+    "latitude": 52.4812689,
+    "longitude": 13.4280825
+  },
+  {
+    "name": "Oberbaumeck",
+    "address": "Bevernstraße 5, 10997 Berlin",
+    "district": "Kreuzberg",
+    "games": [
+      "kicker"
+    ],
+    "features": [
+      "smoking",
+      "dog_friendly"
+    ],
+    "beer_price": 2.50,
+    "description": "Punker-Eckkneipe mit sechs Fassbieren. St. Pauli-Spiele live.",
+    "latitude": 52.5014606,
+    "longitude": 13.4426482
+  },
+  {
+    "name": "Zur Quelle",
+    "address": "Alt-Moabit 87, 10559 Berlin",
+    "district": "Moabit",
+    "games": [
+      "karten"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 2.00,
+    "description": "Berühmteste Eckkneipe Moabits. 24h geöffnet, sehr beliebt, jukebox-rotgelbe Fassade.",
+    "latitude": 52.5251840,
+    "longitude": 13.3432467
+  },
+  {
+    "name": "Bienenkorb",
+    "address": "Maximiliankorso 1, 13465 Berlin",
+    "district": "Reinickendorf",
+    "games": [
+      "dart",
+      "karten"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 2.20,
+    "description": "Eckkneipe mit Holztresen, Spielautomaten und liebenswertem Personal.",
+    "latitude": 52.6332349,
+    "longitude": 13.2876691
+  },
+  {
+    "name": "Sandmann Neukölln",
+    "address": "Reuterstraße 7, 12053 Berlin",
+    "district": "Neukölln",
+    "games": [],
+    "features": [
+      "outdoor",
+      "dog_friendly"
+    ],
+    "beer_price": 3.00,
+    "description": "Café und Kiezkneipe gemischt, Live-Musik, lockerer Umgangston.",
+    "latitude": 52.4819964,
+    "longitude": 13.4293066
+  },
+  {
+    "name": "Stadtklause",
+    "address": "Bernburger Straße 30, 10963 Berlin",
+    "district": "Kreuzberg",
+    "games": [
+      "karten"
+    ],
+    "features": [],
+    "beer_price": 3.20,
+    "description": "Holziges Interieur, niedrige Decke, Berliner Küche mit Schnaps-Grundlage.",
+    "latitude": 52.5047924,
+    "longitude": 13.3796369
+  },
+  {
+    "name": "Krüger Eck",
+    "address": "Weserstraße 12, 12047 Berlin",
+    "district": "Friedrichshain",
+    "games": [
+      "dart",
+      "karten"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 2.50,
+    "description": "Fast 100 Jahre alt, Film-Drehort, preiswert, Bockwurst mit Kartoffelsalat.",
+    "latitude": 52.4874927,
+    "longitude": 13.4300678
+  },
+  {
+    "name": "Tiergartenquelle",
+    "address": "Bachstraße 6, 10555 Berlin",
+    "district": "Tiergarten",
+    "games": [
+      "karten"
+    ],
+    "features": [
+      "outdoor",
+      "dog_friendly"
+    ],
+    "beer_price": 3.50,
+    "description": "Alte Fotos und Bierdeckel an Wänden, Zwickel-Bier von Lemke, warme Küche, Biergarten.",
+    "latitude": 52.5169055,
+    "longitude": 13.3379601
+  },
+  {
+    "name": "Wilhelm Hoeck 1892",
+    "address": "Wilmersdorfer Straße 149, 10585 Berlin",
+    "district": "Charlottenburg",
+    "games": [
+      "karten"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 3.20,
+    "description": "Über 130 Jahre alt, historischer Schankraum, Berliner Kindl-Bier, Montag Schnitzeltag.",
+    "latitude": 52.5139230,
+    "longitude": 13.3050769
+  },
+  {
+    "name": "Dicke Wirtin",
+    "address": "Carmerstraße 9, 10623 Berlin",
+    "district": "Charlottenburg",
+    "games": [
+      "karten"
+    ],
+    "features": [
+      "dog_friendly"
+    ],
+    "beer_price": 3.50,
+    "description": "Am Savignyplatz, Erinnerungsnippes, Holzeinrichtung, Currywurst und Schweinebraten.",
+    "latitude": 52.5064674,
+    "longitude": 13.3235874
+  },
+  {
+    "name": "Lerchen und Eulen",
+    "address": "Pücklerstraße 33, 10997 Berlin",
+    "district": "Kreuzberg",
+    "games": [
+      "karten"
+    ],
+    "features": [
+      "outdoor"
+    ],
+    "beer_price": 3.50,
+    "description": "Secondhand-Mobiliar, schöne Terrasse, sehr beliebt.",
+    "latitude": 52.5019321,
+    "longitude": 13.4305892
+  },
+  {
+    "name": "Freya Fuchs",
+    "address": "Tegeler Straße 34, 13353 Berlin",
+    "district": "Wedding",
+    "games": [
+      "karten"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 2.20,
+    "description": "Wohnzimmerbar mit günstigen Preisen und Raucherzimmer.",
+    "latitude": 52.5418709,
+    "longitude": 13.3568277
+  },
+  {
+    "name": "Sieben",
+    "address": "Sonntagstraße 6, 10245 Berlin",
+    "district": "Friedrichshain",
+    "games": [
+      "karten"
+    ],
+    "features": [
+      "outdoor"
+    ],
+    "beer_price": 3.00,
+    "description": "Wohnzimmerbar mit Efeu-Dekoration und Außenbereich.",
+    "latitude": 52.5053360,
+    "longitude": 13.4674276
+  },
+  {
+    "name": "Bei Schlawinchen",
+    "address": "Schönleinstraße 34, 10967 Berlin",
+    "district": "Kreuzberg",
+    "games": [
+      "karten"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 2.20,
+    "description": "Durchgehend geöffnet, preisgünstiges Bier, Vintage-Deko mit verstaubten Schätzen.",
+    "latitude": 52.4926717,
+    "longitude": 13.4217105
+  },
+  {
+    "name": "Stammtisch",
+    "address": "Weserstraße 159, 12045 Berlin",
+    "district": "Neukölln",
+    "games": [
+      "karten"
+    ],
+    "features": [
+      "dog_friendly"
+    ],
+    "beer_price": 2.50,
+    "description": "Ruhige Eckkneipe mit Kleinkunstbühne und Stammgästen.",
+    "latitude": 52.4824813,
+    "longitude": 13.4430897
+  },
+  {
+    "name": "Travolta",
+    "address": "Wiener Straße 14, 10999 Berlin",
+    "district": "Kreuzberg",
+    "games": [
+      "kicker",
+      "flipper"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 2.50,
+    "description": "Unkompliziert, lange geöffnet bis in die frühen Morgenstunden, entspannt.",
+    "latitude": 52.4980497,
+    "longitude": 13.4292240
+  },
+  {
+    "name": "Clash",
+    "address": "Gneisenaustraße 2a, 10961 Berlin",
+    "district": "Kreuzberg",
+    "games": [
+      "kicker",
+      "billard",
+      "flipper"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 2.80,
+    "description": "Im Mehringhof. Zwei Kicker, rockige Kneipe, Konzerte am Wochenende, hauseigenes Bier.",
+    "latitude": 52.4919487,
+    "longitude": 13.3889569
+  },
+  {
+    "name": "FKK",
+    "address": "Krossener Straße 11, 10245 Berlin",
+    "district": "Friedrichshain",
+    "games": [
+      "kicker",
+      "flipper"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 2.20,
+    "description": "Friedrichshainer Kicker Kultur. Vier Tische kostenlos, Dienstags Turnier ab 19 Uhr.",
+    "latitude": 52.5106870,
+    "longitude": 13.4582338
+  },
+  {
+    "name": "Madame Claude",
+    "address": "Lübbener Straße 19, 10997 Berlin",
+    "district": "Kreuzberg",
+    "games": [
+      "kicker"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 3.00,
+    "description": "Umgedrehte Einrichtung an der Decke, Konzerte und Lesungen, Nebenraum mit Kickertisch.",
+    "latitude": 52.4996096,
+    "longitude": 13.4374056
+  },
+  {
+    "name": "Café Morgenrot",
+    "address": "Kastanienallee 85, 10435 Berlin",
+    "district": "Prenzlauer Berg",
+    "games": [
+      "karten"
+    ],
+    "features": [
+      "outdoor"
+    ],
+    "beer_price": 2.20,
+    "description": "Kollektivbetrieb mit veganer Küche, entspannte Atmosphäre, Sterni für 2.20€.",
+    "latitude": 52.5373900,
+    "longitude": 13.4092293
+  },
+  {
+    "name": "Prager Frühling",
+    "address": "Berliner Straße 113, 13189 Berlin",
+    "district": "Pankow",
+    "games": [
+      "karten"
+    ],
+    "features": [
+      "outdoor",
+      "smoking"
+    ],
+    "beer_price": 2.90,
+    "description": "Tschechische Bier-Bar im Florakiez. Helles Svijansky Maz für 2.90€.",
+    "latitude": 52.5655237,
+    "longitude": 13.4129109
+  },
+  {
+    "name": "Linie 1",
+    "address": "Köpenicker Straße 188, 10997 Berlin",
+    "district": "Kreuzberg",
+    "games": [
+      "dart",
+      "flipper",
+      "billard",
+      "kicker"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 2.00,
+    "description": "Bequeme Kinosessel, Darts, Flipper, Billard und Tischfußball. 0,5l Berliner Pilsener für 2€.",
+    "latitude": 52.5019418,
+    "longitude": 13.4388005
+  },
+  {
+    "name": "Billardaire",
+    "address": "Hauptstraße 19, 10827 Berlin",
+    "district": "Schöneberg",
+    "games": [
+      "billard",
+      "snooker"
+    ],
+    "features": [
+      "smoking"
+    ],
+    "beer_price": 3.50,
+    "description": "Ältester Billardsalon Berlins mit 12 Pool-, 3 Snooker- und einem Carambolage-Tisch.",
+    "latitude": 52.4866863,
+    "longitude": 13.3565228
+  },
+  {
+    "name": "Bata Bar Billiards",
+    "address": "Karl-Liebknecht-Straße 13, 10178 Berlin",
+    "district": "Mitte",
+    "games": [
+      "billard",
+      "dart"
+    ],
+    "features": [],
+    "beer_price": 4.50,
+    "description": "Premium-Billiard nahe Alexanderplatz mit 12 Tischen, ausgezeichnete Cocktailauswahl.",
+    "latitude": 52.5227223,
+    "longitude": 13.4096521
+  },
+  {
+    "name": "Bei Manni",
+    "address": "Hartmannsweilerweg 50, 14163 Berlin",
+    "district": "Zehlendorf",
+    "games": [
+      "karten",
+      "dart"
+    ],
+    "features": [
+      "outdoor",
+      "dog_friendly"
+    ],
+    "beer_price": 2.80,
+    "description": "Klassische Kiezkneipe mit Skat-Tisch, Bockwurst und Stammtisch.",
+    "latitude": 52.4434565,
+    "longitude": 13.2469884
+  }
+]
