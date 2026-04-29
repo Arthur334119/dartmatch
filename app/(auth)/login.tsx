@@ -63,16 +63,22 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await login(email.trim(), password);
+    } catch (e: any) {
+      Alert.alert('Login fehlgeschlagen', e?.message ?? 'Bitte erneut versuchen.');
+      setLoading(false);
+      return;
+    }
+    try {
       if (remember) {
         await saveCredentials(email.trim(), password);
       } else {
         await clearCredentials();
       }
-    } catch (e: any) {
-      Alert.alert('Login fehlgeschlagen', e?.message ?? 'Bitte erneut versuchen.');
-    } finally {
-      setLoading(false);
+    } catch {
+      // Credentials-Speicherung darf den Login nicht blockieren
+      // (z. B. SecureStore ist im Web nicht verfügbar).
     }
+    router.replace('/');
   }
 
   return (

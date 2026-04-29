@@ -30,7 +30,12 @@ export async function saveCredentials(
 ): Promise<void> {
   await AsyncStorage.setItem(REMEMBER_KEY, 'true');
   await AsyncStorage.setItem(EMAIL_KEY, email);
-  await SecureStore.setItemAsync(PASSWORD_KEY, password);
+  try {
+    await SecureStore.setItemAsync(PASSWORD_KEY, password);
+  } catch {
+    // SecureStore ist im Web nicht verfügbar — Passwort wird dann
+    // nicht persistiert, aber die E-Mail bleibt vorausgefüllt.
+  }
 }
 
 export async function clearCredentials(): Promise<void> {

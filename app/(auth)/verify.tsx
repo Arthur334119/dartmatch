@@ -43,15 +43,36 @@ export default function VerifyScreen() {
   async function refresh() {
     setRefreshing(true);
     try {
-      await supabase.auth.refreshSession();
-    } catch {}
-    const { data: { user: u } } = await supabase.auth.getUser();
-    setEmailConfirmed(!!u?.email_confirmed_at);
-    if (u) {
-      const profile = await getProfile(u.id);
-      setAvatarUrl(profile?.avatarUrl ?? null);
+      const withTimeout = <T,>(p: Promise<T>, ms: number, label: string) =>
+        Promise.race<T>([
+          p,
+          new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error(`Timeout: ${label}`)), ms),
+          ),
+        ]);
+
+      const { data, error } = await withTimeout(
+        supabase.auth.getUser(),
+        8000,
+        'getUser',
+      );
+      if (error) throw error;
+      const u = data.user;
+      setEmailConfirmed(!!u?.email_confirmed_at);
+      if (u) {
+        const profile = await withTimeout(
+          getProfile(u.id),
+          8000,
+          'getProfile',
+        );
+        setAvatarUrl(profile?.avatarUrl ?? null);
+      }
+    } catch (e: any) {
+      console.error('[verify] refresh failed', e);
+      Alert.alert('Status konnte nicht geladen werden', e?.message ?? '');
+    } finally {
+      setRefreshing(false);
     }
-    setRefreshing(false);
   }
 
   async function handleResend() {
@@ -85,10 +106,19 @@ export default function VerifyScreen() {
 
     setUploading(true);
     try {
-      const url = await uploadAvatar(asset.uri);
+      const url = await Promise.race([
+        uploadAvatar(asset.uri),
+        new Promise<string>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Timeout: Upload dauert zu lange')),
+            20000,
+          ),
+        ),
+      ]);
       setAvatarUrl(url);
     } catch (e: any) {
-      Alert.alert('Upload fehlgeschlagen', e?.message ?? '');
+      console.error('[verify] uploadAvatar failed', e);
+      Alert.alert('Upload fehlgeschlagen', e?.message ?? 'Unbekannter Fehler');
     } finally {
       setUploading(false);
     }
