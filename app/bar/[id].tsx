@@ -37,10 +37,11 @@ import {
   alpha,
   type Palette,
 } from '@/lib/colors';
-import { Bar, Review } from '@/lib/types';
+import { Bar, GooglePlaceDetails, Review } from '@/lib/types';
 import {
   getBar,
   getBarReviews,
+  getGooglePlaceDetails,
   isCheckedIn as fetchIsCheckedIn,
   getPresenceCount,
   checkIn,
@@ -80,6 +81,7 @@ export default function BarDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [places, setPlaces] = useState<GooglePlaceDetails | null>(null);
 
   const scrollY = useSharedValue(0);
   const [statusBarLight, setStatusBarLight] = useState(true);
@@ -162,7 +164,17 @@ export default function BarDetailScreen() {
     setChecked(c);
     setPresence(pCount);
     setLoading(false);
+
+    // Google-Places lazy nachziehen — UI ist schon da, das macht den
+    // Hero schöner sobald die Daten reinkommen, blockiert aber nichts.
+    if (b?.googlePlaceId) {
+      getGooglePlaceDetails(b.googlePlaceId).then(setPlaces);
+    }
   }
+
+  // Hero-Foto: wenn Google-Photos verfügbar, nimm das erste — sonst
+  // das in der DB gespeicherte (Unsplash-Fallback aus 20260429-Migration).
+  const heroImageUrl = places?.photos[0]?.url ?? bar?.imageUrl ?? null;
 
   async function toggleCheck() {
     if (!bar || checkingIn) return;
@@ -276,8 +288,8 @@ export default function BarDetailScreen() {
         {/* Hero with parallax */}
         <View style={styles.heroWrap}>
           <Animated.View style={[StyleSheet.absoluteFill, heroParallaxStyle]}>
-            {bar.imageUrl ? (
-              <Image source={{ uri: bar.imageUrl }} style={styles.hero} />
+            {heroImageUrl ? (
+              <Image source={{ uri: heroImageUrl }} style={styles.hero} />
             ) : (
               <View style={[styles.hero, styles.heroFallback]}>
                 <Ionicons name="beer" size={88} color={alpha('#fff', 0.85)} />
@@ -583,6 +595,8 @@ export default function BarDetailScreen() {
           {tab === 'reviews' && (
             <ReviewsTab
               reviews={reviews}
+              googleReviews={places?.reviews ?? []}
+              googleMapsUri={places?.googleMapsUri ?? null}
               barName={bar.name}
               p={p}
               onAddPress={() => setReviewOpen(true)}
@@ -821,11 +835,15 @@ function ListEntry({
 
 function ReviewsTab({
   reviews,
+  googleReviews,
+  googleMapsUri,
   barName,
   p,
   onAddPress,
 }: {
   reviews: Review[];
+  googleReviews: import('@/lib/types').GooglePlaceReview[];
+  googleMapsUri: string | null;
   barName: string;
   p: Palette;
   onAddPress: () => void;
@@ -933,6 +951,95 @@ function ReviewsTab({
           ))}
         </View>
       )}
+
+      {googleReviews.length > 0 && (
+        <View style={{ marginTop: spacing.xl }}>
+          <View style={styles.googleHeader}>
+            <Text style={[styles.sectionTitle, { color: p.text }]}>
+              Bewertungen von Google
+            </Text>
+            {googleMapsUri && (
+              <TouchableOpacity
+                onPress={() => Linking.openURL(googleMapsUri).catch(() => {})}
+                style={[styles.writeBtn, { backgroundColor: p.surfaceMuted }]}
+              >
+                <Ionicons name="open-outline" size={13} color={p.text} />
+                <Text style={{ color: p.text, fontWeight: '700', fontSize: 12 }}>
+                  In Maps öffnen
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
+            {googleReviews.map((r) => (
+              <GoogleReviewItem key={r.id} review={r} p={p} />
+            ))}
+          </View>
+          <Text
+            style={{
+              color: p.textMuted,
+              fontSize: 11,
+              marginTop: spacing.md,
+              textAlign: 'center',
+            }}
+          >
+            Bewertungen via Google Places. Powered by Google.
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function GoogleReviewItem({
+  review,
+  p,
+}: {
+  review: import('@/lib/types').GooglePlaceReview;
+  p: Palette;
+}) {
+  return (
+    <View
+      style={[
+        styles.googleReviewCard,
+        { backgroundColor: p.card, borderColor: p.divider },
+      ]}
+    >
+      <View style={styles.googleReviewHead}>
+        {review.authorPhotoUrl ? (
+          <Image
+            source={{ uri: review.authorPhotoUrl }}
+            style={styles.googleAvatar}
+          />
+        ) : (
+          <View
+            style={[
+              styles.googleAvatar,
+              { backgroundColor: p.surfaceMuted, alignItems: 'center', justifyContent: 'center' },
+            ]}
+          >
+            <Ionicons name="person" size={14} color={p.textMuted} />
+          </View>
+        )}
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: p.text, fontWeight: '700', fontSize: 14 }} numberOfLines={1}>
+            {review.authorName}
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+            <StarRow rating={review.rating} size={11} />
+            {review.relativeTime && (
+              <Text style={{ color: p.textMuted, fontSize: 11 }}>
+                {review.relativeTime}
+              </Text>
+            )}
+          </View>
+        </View>
+      </View>
+      {review.text ? (
+        <Text style={{ color: p.text, fontSize: 14, lineHeight: 20, marginTop: spacing.sm }}>
+          {review.text}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -1308,5 +1415,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+  },
+  googleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  googleReviewCard: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    padding: spacing.md,
+  },
+  googleReviewHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  googleAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
 });

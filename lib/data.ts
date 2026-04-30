@@ -1,6 +1,7 @@
 import { supabase, TABLES, BUCKETS } from './supabase';
 import {
   Bar,
+  GooglePlaceDetails,
   Post,
   Review,
   UserProfile,
@@ -45,6 +46,33 @@ export async function getBar(barId: string): Promise<Bar | null> {
     .maybeSingle();
   if (error || !data) return null;
   return barFromRow(data);
+}
+
+/**
+ * Lädt Fotos + Reviews einer Bar via Google Places (Edge Function).
+ * Liefert null, wenn die Bar keine google_place_id hat oder die Function
+ * fehlschlägt — Aufrufer fallen dann auf die statischen Daten zurück.
+ */
+export async function getGooglePlaceDetails(
+  placeId: string,
+  maxPhotos = 4,
+): Promise<GooglePlaceDetails | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke<GooglePlaceDetails>(
+      'google-places',
+      {
+        body: { action: 'details', place_id: placeId, max_photos: maxPhotos },
+      },
+    );
+    if (error) {
+      console.warn('[google-places] details error', error);
+      return null;
+    }
+    return data ?? null;
+  } catch (e) {
+    console.warn('[google-places] details exception', e);
+    return null;
+  }
 }
 
 // ── PROFILE ───────────────────────────────────────────────────────────

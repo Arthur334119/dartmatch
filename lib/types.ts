@@ -16,7 +16,31 @@ export type Bar = {
   rating: number;
   reviewCount: number;
   osmId: string | null;
+  googlePlaceId: string | null;
   distanceKm?: number;
+};
+
+export type GooglePlacePhoto = {
+  url: string;
+  attribution: string | null;
+};
+
+export type GooglePlaceReview = {
+  id: string;
+  rating: number;
+  text: string;
+  publishedAt: string | null;
+  relativeTime: string | null;
+  authorName: string;
+  authorPhotoUrl: string | null;
+};
+
+export type GooglePlaceDetails = {
+  rating: number | null;
+  userRatingCount: number | null;
+  googleMapsUri: string | null;
+  photos: GooglePlacePhoto[];
+  reviews: GooglePlaceReview[];
 };
 
 export type UserProfile = {
@@ -109,6 +133,7 @@ export function barFromRow(row: Record<string, any>): Bar {
     rating: Number(row.rating ?? 0),
     reviewCount: Number(row.review_count ?? 0),
     osmId: row.osm_id != null ? String(row.osm_id) : null,
+    googlePlaceId: row.google_place_id != null ? String(row.google_place_id) : null,
   };
 }
 
