@@ -51,6 +51,7 @@ export type UserProfile = {
   favoriteGames: string[];
   location: string | null;
   phone: string | null;
+  cityId: string | null;
   createdAt: string;
 };
 
@@ -159,6 +160,7 @@ export function profileFromRow(row: Record<string, any>): UserProfile {
     favoriteGames: parseStringArray(row.favorite_games),
     location: row.location ?? null,
     phone: row.phone ?? null,
+    cityId: row.city_id ?? null,
     createdAt: String(row.created_at ?? new Date().toISOString()),
   };
 }

@@ -42,6 +42,7 @@ import {
 } from '@/lib/constants';
 import { Bar } from '@/lib/types';
 import { getAllBars, attachDistances } from '@/lib/data';
+import { City, getMyCity } from '@/lib/cities';
 import { BarCard } from '@/components/BarCard';
 import { haptic } from '@/lib/haptics';
 import { PressableButton } from '@/components/PressableButton';
@@ -62,6 +63,7 @@ export default function MapScreen() {
   const mapRef = useRef<MapView>(null);
   const [userLat, setUserLat] = useState<number | null>(null);
   const [userLng, setUserLng] = useState<number | null>(null);
+  const [city, setCity] = useState<City | null>(null);
   const [bars, setBars] = useState<Bar[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -121,6 +123,10 @@ export default function MapScreen() {
 
   useEffect(() => {
     (async () => {
+      // Stadt zuerst, damit wir auch ohne Geolocation zentriert starten
+      const myCity = await getMyCity();
+      setCity(myCity);
+
       const perm = await Location.requestForegroundPermissionsAsync();
       let lat: number | null = null;
       let lng: number | null = null;
@@ -148,6 +154,16 @@ export default function MapScreen() {
             longitude: lng,
             latitudeDelta: DEFAULT_ZOOM_DELTA,
             longitudeDelta: DEFAULT_ZOOM_DELTA,
+          },
+          500,
+        );
+      } else if (myCity) {
+        mapRef.current?.animateToRegion(
+          {
+            latitude: myCity.centerLat,
+            longitude: myCity.centerLng,
+            latitudeDelta: myCity.zoomDelta,
+            longitudeDelta: myCity.zoomDelta,
           },
           500,
         );
@@ -225,10 +241,10 @@ export default function MapScreen() {
   }
 
   const initialRegion: Region = {
-    latitude: userLat ?? BERLIN_LAT,
-    longitude: userLng ?? BERLIN_LNG,
-    latitudeDelta: DEFAULT_ZOOM_DELTA,
-    longitudeDelta: DEFAULT_ZOOM_DELTA,
+    latitude: userLat ?? city?.centerLat ?? BERLIN_LAT,
+    longitude: userLng ?? city?.centerLng ?? BERLIN_LNG,
+    latitudeDelta: city?.zoomDelta ?? DEFAULT_ZOOM_DELTA,
+    longitudeDelta: city?.zoomDelta ?? DEFAULT_ZOOM_DELTA,
   };
 
   return (

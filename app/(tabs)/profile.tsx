@@ -36,6 +36,7 @@ import { TextField } from '@/components/TextField';
 import { SectionLabel } from '@/components/SectionLabel';
 import { logout, getCurrentUser } from '@/lib/auth';
 import { DART_GAME_TYPES } from '@/lib/constants';
+import { City, getCities, DEFAULT_CITY_ID } from '@/lib/cities';
 import { clearCredentials } from '@/lib/secure-credentials';
 
 export default function ProfileScreen() {
@@ -440,6 +441,8 @@ function EditProfileModal({
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
   const [phone, setPhone] = useState('');
+  const [cityId, setCityId] = useState<string>(DEFAULT_CITY_ID);
+  const [cities, setCities] = useState<City[]>([]);
   const [games, setGames] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
 
@@ -449,7 +452,9 @@ function EditProfileModal({
     setBio(profile.bio ?? '');
     setLocation(profile.location ?? '');
     setPhone(profile.phone ?? '');
+    setCityId(profile.cityId ?? DEFAULT_CITY_ID);
     setGames(new Set(profile.favoriteGames));
+    getCities().then(setCities);
   }, [visible, profile]);
 
   async function save() {
@@ -474,6 +479,7 @@ function EditProfileModal({
         bio: bio.trim(),
         location: location.trim(),
         phone: normalizedPhone,
+        city_id: cityId,
         favorite_games: [...games],
       });
       onSaved();
@@ -535,6 +541,46 @@ function EditProfileModal({
               placeholder="Erzähl was über dich…"
               containerStyle={{ marginTop: 6 }}
             />
+            <Text
+              style={[styles.fieldLabel, { color: p.textMuted, marginTop: spacing.lg }]}
+            >
+              Stadt
+            </Text>
+            <View style={[styles.cityRow, { marginTop: 6 }]}>
+              {cities.map((c) => {
+                const active = cityId === c.id;
+                return (
+                  <TouchableOpacity
+                    key={c.id}
+                    onPress={() => setCityId(c.id)}
+                    style={[
+                      styles.cityChip,
+                      {
+                        backgroundColor: active ? colors.primary : p.surface,
+                        borderColor: active ? colors.primary : p.divider,
+                      },
+                    ]}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons
+                      name="business"
+                      size={13}
+                      color={active ? '#fff' : p.textMuted}
+                    />
+                    <Text
+                      style={{
+                        color: active ? '#fff' : p.text,
+                        fontWeight: active ? '700' : '500',
+                        fontSize: 13,
+                      }}
+                    >
+                      {c.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
             <Text
               style={[styles.fieldLabel, { color: p.textMuted, marginTop: spacing.lg }]}
             >
@@ -732,5 +778,19 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1,
     textTransform: 'uppercase',
+  },
+  cityRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  cityChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 9,
+    borderRadius: radii.pill,
+    borderWidth: 1.5,
   },
 });
