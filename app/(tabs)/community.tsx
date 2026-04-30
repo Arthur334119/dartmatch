@@ -19,7 +19,7 @@ import {
   shadows,
 } from '@/lib/colors';
 import { Post } from '@/lib/types';
-import { getPosts, deletePost } from '@/lib/data';
+import { getPosts, deletePost, getRsvpCounts } from '@/lib/data';
 import { getCurrentUser } from '@/lib/auth';
 import { supabase, TABLES } from '@/lib/supabase';
 import { POST_TYPE_LOOKING, POST_TYPE_PLAYING } from '@/lib/constants';
@@ -40,6 +40,9 @@ export default function CommunityScreen() {
   const insets = useSafeAreaInsets();
 
   const [posts, setPosts] = useState<Post[]>([]);
+  const [rsvpCounts, setRsvpCounts] = useState<
+    Record<string, { going: number; maybe: number; cant: number }>
+  >({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('all');
@@ -51,6 +54,13 @@ export default function CommunityScreen() {
     const fetched = await getPosts({ type: filterType ?? undefined });
     setPosts(fetched);
     setLoading(false);
+    const eventIds = fetched.filter((p) => p.eventAt).map((p) => p.id);
+    if (eventIds.length > 0) {
+      const counts = await getRsvpCounts(eventIds);
+      setRsvpCounts(counts);
+    } else {
+      setRsvpCounts({});
+    }
   }, [filterType]);
 
   useEffect(() => {
@@ -175,10 +185,12 @@ export default function CommunityScreen() {
             <PostCard
               post={item}
               currentUserId={userId}
+              rsvpCounts={rsvpCounts[item.id]}
               onDelete={() => handleDelete(item.id)}
               onBarPress={
                 item.barId ? () => router.push(`/bar/${item.barId}`) : undefined
               }
+              onRsvpChange={() => load()}
             />
           )}
           contentContainerStyle={{

@@ -3,12 +3,15 @@ import {
   Bar,
   GooglePlaceDetails,
   Post,
+  PostRsvp,
   Review,
+  RsvpStatus,
   UserProfile,
   barFromRow,
   postFromRow,
   profileFromRow,
   reviewFromRow,
+  rsvpFromRow,
   isPostExpired,
 } from './types';
 import { ensureCurrentUserProfile, getCurrentUser } from './auth';
@@ -246,6 +249,8 @@ export async function createPost(input: {
   content: string;
   playerCount: number | null;
   durationHours: number | null;
+  eventAt?: string | null;
+  maxAttendees?: number | null;
 }): Promise<void> {
   const user = await getCurrentUser();
   if (!user) throw new Error('Nicht angemeldet');
@@ -262,6 +267,8 @@ export async function createPost(input: {
     content: input.content,
     player_count: input.playerCount,
     expires_at: expiresAt,
+    event_at: input.eventAt ?? null,
+    max_attendees: input.maxAttendees ?? null,
     created_at: new Date().toISOString(),
   });
   if (error) throw error;
@@ -269,6 +276,82 @@ export async function createPost(input: {
 
 export async function deletePost(postId: string): Promise<void> {
   await supabase.from(TABLES.posts).delete().eq('id', postId);
+}
+
+// ── EVENT RSVPs ───────────────────────────────────────────────────────
+
+export async function getPostRsvps(postId: string): Promise<PostRsvp[]> {
+  const { data, error } = await supabase
+    .from('post_rsvps')
+    .select('*, profiles(username, avatar_url)')
+    .eq('post_id', postId)
+    .order('created_at', { ascending: true });
+  if (error) return [];
+  return (data ?? []).map(rsvpFromRow);
+}
+
+export async function getMyRsvp(postId: string): Promise<RsvpStatus | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from('post_rsvps')
+    .select('status')
+    .eq('post_id', postId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  return (data as { status?: RsvpStatus } | null)?.status ?? null;
+}
+
+export async function setRsvp(
+  postId: string,
+  status: RsvpStatus,
+): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Nicht angemeldet');
+  const { error } = await supabase
+    .from('post_rsvps')
+    .upsert(
+      {
+        post_id: postId,
+        user_id: user.id,
+        status,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'post_id,user_id' },
+    );
+  if (error) throw error;
+}
+
+export async function clearRsvp(postId: string): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) return;
+  await supabase
+    .from('post_rsvps')
+    .delete()
+    .eq('post_id', postId)
+    .eq('user_id', user.id);
+}
+
+/**
+ * Liefert eine Map { postId → { going, maybe, cant } } für eine Liste von
+ * Posts. Genutzt vom Feed, um die RSVP-Counts in einem Round-Trip zu holen.
+ */
+export async function getRsvpCounts(
+  postIds: string[],
+): Promise<Record<string, { going: number; maybe: number; cant: number }>> {
+  if (postIds.length === 0) return {};
+  const { data } = await supabase
+    .from('post_rsvps')
+    .select('post_id, status')
+    .in('post_id', postIds);
+
+  const out: Record<string, { going: number; maybe: number; cant: number }> = {};
+  for (const id of postIds) out[id] = { going: 0, maybe: 0, cant: 0 };
+  for (const row of data ?? []) {
+    const r = row as { post_id: string; status: RsvpStatus };
+    if (out[r.post_id]) out[r.post_id][r.status] += 1;
+  }
+  return out;
 }
 
 // ── PRESENCE ──────────────────────────────────────────────────────────

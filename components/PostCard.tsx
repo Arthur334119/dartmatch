@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Post, isPostExpired } from '@/lib/types';
+import { Post, RsvpStatus, isPostExpired } from '@/lib/types';
 import { BAR_GAME_LABELS } from '@/lib/constants';
 import {
   palette,
@@ -25,17 +25,45 @@ import {
 import { timeAgo, formatTimeOfDay } from '@/lib/relative-time';
 import { PressableCard } from '@/components/PressableCard';
 import { getOrCreateChat } from '@/lib/chat';
+import { clearRsvp, getMyRsvp, setRsvp as upsertRsvp } from '@/lib/data';
 import { showAlert } from '@/lib/alert';
 import { haptic } from '@/lib/haptics';
 
 type Props = {
   post: Post;
   currentUserId: string;
+  rsvpCounts?: { going: number; maybe: number; cant: number };
   onDelete?: () => void;
   onBarPress?: () => void;
+  onRsvpChange?: () => void;
 };
 
-export function PostCard({ post, currentUserId, onDelete, onBarPress }: Props) {
+function formatEvent(d: Date): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const day = new Date(d);
+  day.setHours(0, 0, 0, 0);
+  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const diffDays = Math.round(
+    (day.getTime() - today.getTime()) / (24 * 3600_000),
+  );
+  if (diffDays === 0) return `Heute ${time}`;
+  if (diffDays === 1) return `Morgen ${time}`;
+  if (diffDays > 1 && diffDays < 7) {
+    const weekdays = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+    return `${weekdays[d.getDay()]} ${time}`;
+  }
+  return `${d.getDate()}.${d.getMonth() + 1}. ${time}`;
+}
+
+export function PostCard({
+  post,
+  currentUserId,
+  rsvpCounts,
+  onDelete,
+  onBarPress,
+  onRsvpChange,
+}: Props) {
   const scheme = useColorScheme() ?? 'light';
   const p = palette(scheme);
   const isOwner = post.userId === currentUserId;
@@ -44,6 +72,46 @@ export function PostCard({ post, currentUserId, onDelete, onBarPress }: Props) {
   const accent = isPlaying ? colors.success : colors.primary;
   const accentSoft = isPlaying ? alpha(colors.success, 0.14) : p.primarySoft;
   const [openingChat, setOpeningChat] = useState(false);
+  const [myRsvp, setMyRsvp] = useState<RsvpStatus | null>(null);
+  const [rsvpBusy, setRsvpBusy] = useState(false);
+
+  const isEvent = !!post.eventAt;
+  const eventDate = post.eventAt ? new Date(post.eventAt) : null;
+  const eventPast = eventDate ? eventDate.getTime() < Date.now() : false;
+  const goingCount = rsvpCounts?.going ?? 0;
+  const eventFull =
+    post.maxAttendees != null && goingCount >= post.maxAttendees;
+
+  useEffect(() => {
+    if (!isEvent || !currentUserId) return;
+    let cancelled = false;
+    getMyRsvp(post.id).then((r) => {
+      if (!cancelled) setMyRsvp(r);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [post.id, isEvent, currentUserId]);
+
+  async function handleRsvp(status: RsvpStatus) {
+    if (rsvpBusy) return;
+    setRsvpBusy(true);
+    try {
+      if (myRsvp === status) {
+        await clearRsvp(post.id);
+        setMyRsvp(null);
+      } else {
+        await upsertRsvp(post.id, status);
+        setMyRsvp(status);
+        haptic.selection();
+      }
+      onRsvpChange?.();
+    } catch (e: any) {
+      showAlert('RSVP fehlgeschlagen', e?.message ?? 'Bitte erneut versuchen.');
+    } finally {
+      setRsvpBusy(false);
+    }
+  }
 
   function confirmDelete() {
     Alert.alert(
@@ -168,6 +236,14 @@ export function PostCard({ post, currentUserId, onDelete, onBarPress }: Props) {
         )}
 
         <View style={styles.footerRow}>
+          {isEvent && eventDate && (
+            <Meta
+              icon="calendar"
+              text={formatEvent(eventDate)}
+              color={eventPast ? colors.error : colors.primaryDeep}
+              p={p}
+            />
+          )}
           {post.playerCount != null && (
             <Meta
               icon="people-outline"
@@ -175,7 +251,7 @@ export function PostCard({ post, currentUserId, onDelete, onBarPress }: Props) {
               p={p}
             />
           )}
-          {post.expiresAt && (
+          {!isEvent && post.expiresAt && (
             <Meta
               icon="time-outline"
               text={
@@ -187,7 +263,52 @@ export function PostCard({ post, currentUserId, onDelete, onBarPress }: Props) {
               p={p}
             />
           )}
+          {isEvent && rsvpCounts && (
+            <Meta
+              icon="checkmark-circle"
+              text={
+                post.maxAttendees != null
+                  ? `${goingCount}/${post.maxAttendees} dabei`
+                  : `${goingCount} dabei`
+              }
+              p={p}
+            />
+          )}
         </View>
+
+        {isEvent && !isOwner && !eventPast && (
+          <View style={styles.rsvpRow}>
+            <RsvpButton
+              label="Dabei"
+              icon="checkmark"
+              active={myRsvp === 'going'}
+              accent={colors.success}
+              disabled={
+                rsvpBusy || (eventFull && myRsvp !== 'going')
+              }
+              onPress={() => handleRsvp('going')}
+              p={p}
+            />
+            <RsvpButton
+              label="Vielleicht"
+              icon="help"
+              active={myRsvp === 'maybe'}
+              accent={colors.warning}
+              disabled={rsvpBusy}
+              onPress={() => handleRsvp('maybe')}
+              p={p}
+            />
+            <RsvpButton
+              label="Nope"
+              icon="close"
+              active={myRsvp === 'cant'}
+              accent={colors.error}
+              disabled={rsvpBusy}
+              onPress={() => handleRsvp('cant')}
+              p={p}
+            />
+          </View>
+        )}
 
         {!isOwner && !expired && (
           <TouchableOpacity
@@ -213,6 +334,52 @@ export function PostCard({ post, currentUserId, onDelete, onBarPress }: Props) {
         )}
       </View>
     </View>
+  );
+}
+
+function RsvpButton({
+  label,
+  icon,
+  active,
+  accent,
+  disabled,
+  onPress,
+  p,
+}: {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  active: boolean;
+  accent: string;
+  disabled: boolean;
+  onPress: () => void;
+  p: Palette;
+}) {
+  return (
+    <TouchableOpacity
+      style={[
+        styles.rsvpBtn,
+        {
+          backgroundColor: active ? accent : p.surfaceMuted,
+          borderColor: active ? accent : p.divider,
+          opacity: disabled ? 0.5 : 1,
+        },
+      ]}
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.85}
+    >
+      <Ionicons name={icon} size={14} color={active ? '#fff' : accent} />
+      <Text
+        style={{
+          color: active ? '#fff' : p.text,
+          fontWeight: '700',
+          fontSize: 12,
+          marginLeft: 4,
+        }}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
   );
 }
 
@@ -310,4 +477,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   dmButtonText: { fontWeight: '700', fontSize: 13 },
+  rsvpRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: spacing.md,
+  },
+  rsvpBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: radii.md,
+    borderWidth: 1,
+  },
 });

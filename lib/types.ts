@@ -74,10 +74,23 @@ export type Post = {
   content: string;
   playerCount: number | null;
   expiresAt: string | null;
+  eventAt: string | null;
+  maxAttendees: number | null;
   createdAt: string;
   username: string | null;
   avatarUrl: string | null;
   barName: string | null;
+};
+
+export type RsvpStatus = 'going' | 'maybe' | 'cant';
+
+export type PostRsvp = {
+  postId: string;
+  userId: string;
+  status: RsvpStatus;
+  createdAt: string;
+  username: string | null;
+  avatarUrl: string | null;
 };
 
 function parseStringArray(raw: unknown): string[] {
@@ -173,10 +186,23 @@ export function postFromRow(row: Record<string, any>): Post {
     content: String(row.content ?? ''),
     playerCount: row.player_count != null ? Number(row.player_count) : null,
     expiresAt: row.expires_at ?? null,
+    eventAt: row.event_at ?? null,
+    maxAttendees: row.max_attendees != null ? Number(row.max_attendees) : null,
     createdAt: String(row.created_at ?? new Date().toISOString()),
     username: row.profiles?.username ?? row.username ?? null,
     avatarUrl: row.profiles?.avatar_url ?? row.avatar_url ?? null,
     barName: row.bars?.name ?? row.bar_name ?? null,
+  };
+}
+
+export function rsvpFromRow(row: Record<string, any>): PostRsvp {
+  return {
+    postId: String(row.post_id ?? ''),
+    userId: String(row.user_id ?? ''),
+    status: (row.status as RsvpStatus) ?? 'going',
+    createdAt: String(row.created_at ?? new Date().toISOString()),
+    username: row.profiles?.username ?? null,
+    avatarUrl: row.profiles?.avatar_url ?? null,
   };
 }
 

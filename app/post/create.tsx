@@ -49,6 +49,60 @@ const DURATIONS: { hours: number | null; label: string }[] = [
 
 const MAX_CONTENT = 300;
 
+type EventQuickPick = {
+  key: string;
+  label: string;
+  resolve: () => Date;
+};
+
+function tonightAt(hour: number): Date {
+  const d = new Date();
+  d.setHours(hour, 0, 0, 0);
+  // Wenn Uhrzeit heute schon vorbei → morgen
+  if (d.getTime() < Date.now() + 30 * 60_000) {
+    d.setDate(d.getDate() + 1);
+  }
+  return d;
+}
+
+function nextDayAt(daysAhead: number, hour: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + daysAhead);
+  d.setHours(hour, 0, 0, 0);
+  return d;
+}
+
+function nextSaturdayAt(hour: number): Date {
+  const d = new Date();
+  const day = d.getDay(); // 0 = Sun, 6 = Sat
+  const add = (6 - day + 7) % 7 || 7;
+  d.setDate(d.getDate() + add);
+  d.setHours(hour, 0, 0, 0);
+  return d;
+}
+
+const EVENT_PICKS: EventQuickPick[] = [
+  { key: 'tonight', label: 'Heute 20 Uhr', resolve: () => tonightAt(20) },
+  { key: 'tomorrow', label: 'Morgen 20 Uhr', resolve: () => nextDayAt(1, 20) },
+  { key: 'saturday', label: 'Samstag 20 Uhr', resolve: () => nextSaturdayAt(20) },
+];
+
+function formatEventLabel(d: Date): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const day = new Date(d);
+  day.setHours(0, 0, 0, 0);
+
+  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  if (day.getTime() === today.getTime()) return `Heute ${time}`;
+  if (day.getTime() === tomorrow.getTime()) return `Morgen ${time}`;
+
+  const weekdays = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+  return `${weekdays[d.getDay()]} ${d.getDate()}.${d.getMonth() + 1}. ${time}`;
+}
+
 export default function CreatePostScreen() {
   const scheme = useColorScheme() ?? 'light';
   const p = palette(scheme);
@@ -63,6 +117,8 @@ export default function CreatePostScreen() {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [barPickerOpen, setBarPickerOpen] = useState(false);
+  const [eventAt, setEventAt] = useState<Date | null>(null);
+  const [maxAttendees, setMaxAttendees] = useState<number | null>(null);
 
   useEffect(() => {
     getAllBars().then(setBars);
@@ -122,6 +178,8 @@ export default function CreatePostScreen() {
         content: content.trim(),
         playerCount,
         durationHours: duration,
+        eventAt: eventAt ? eventAt.toISOString() : null,
+        maxAttendees: eventAt ? maxAttendees : null,
       });
       haptic.success();
       router.back();
@@ -334,6 +392,115 @@ export default function CreatePostScreen() {
               })}
             </View>
           </Section>
+
+          <Section label="Event-Termin" p={p} optional>
+            <View style={styles.chipsWrap}>
+              <TouchableOpacity
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor: !eventAt ? p.primarySoft : p.surface,
+                    borderColor: !eventAt ? colors.primary : p.divider,
+                  },
+                ]}
+                onPress={() => {
+                  setEventAt(null);
+                  setMaxAttendees(null);
+                }}
+                activeOpacity={0.85}
+              >
+                <Text
+                  style={{
+                    color: !eventAt ? colors.primaryDeep : p.text,
+                    fontWeight: !eventAt ? '700' : '500',
+                  }}
+                >
+                  Spontan
+                </Text>
+              </TouchableOpacity>
+              {EVENT_PICKS.map((pick) => {
+                const target = pick.resolve();
+                const active =
+                  !!eventAt &&
+                  Math.abs(eventAt.getTime() - target.getTime()) < 60_000;
+                return (
+                  <TouchableOpacity
+                    key={pick.key}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: active ? p.primarySoft : p.surface,
+                        borderColor: active ? colors.primary : p.divider,
+                      },
+                    ]}
+                    onPress={() => {
+                      haptic.selection();
+                      setEventAt(pick.resolve());
+                    }}
+                    activeOpacity={0.85}
+                  >
+                    <Text
+                      style={{
+                        color: active ? colors.primaryDeep : p.text,
+                        fontWeight: active ? '700' : '500',
+                      }}
+                    >
+                      {pick.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {eventAt && (
+              <Text style={{ color: p.textMuted, fontSize: 12, marginTop: 6 }}>
+                Geplant: {formatEventLabel(eventAt)}
+              </Text>
+            )}
+          </Section>
+
+          {eventAt && (
+            <Section label="Max. Teilnehmer" p={p} optional>
+              <View
+                style={[
+                  styles.counterBox,
+                  { backgroundColor: p.card, borderColor: p.divider },
+                ]}
+              >
+                <CounterBtn
+                  icon="remove"
+                  onPress={() =>
+                    setMaxAttendees((n) =>
+                      n === null ? null : Math.max(2, n - 1),
+                    )
+                  }
+                  disabled={maxAttendees === null || maxAttendees <= 2}
+                  p={p}
+                />
+                <View style={{ alignItems: 'center', flex: 1 }}>
+                  <Text style={[styles.counterValue, { color: p.text }]}>
+                    {maxAttendees ?? '∞'}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() =>
+                      setMaxAttendees((n) => (n === null ? 4 : null))
+                    }
+                  >
+                    <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>
+                      {maxAttendees === null ? 'Limit setzen' : 'Kein Limit'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <CounterBtn
+                  icon="add"
+                  onPress={() =>
+                    setMaxAttendees((n) => (n === null ? 4 : Math.min(50, n + 1)))
+                  }
+                  disabled={maxAttendees != null && maxAttendees >= 50}
+                  p={p}
+                />
+              </View>
+            </Section>
+          )}
 
           <Section label="Nachricht" p={p}>
             <TextField
