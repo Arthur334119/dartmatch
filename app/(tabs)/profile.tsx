@@ -421,6 +421,7 @@ function EditProfileModal({
   const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
   const [location, setLocation] = useState('');
+  const [phone, setPhone] = useState('');
   const [games, setGames] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
 
@@ -429,6 +430,7 @@ function EditProfileModal({
     setUsername(profile.username);
     setBio(profile.bio ?? '');
     setLocation(profile.location ?? '');
+    setPhone(profile.phone ?? '');
     setGames(new Set(profile.favoriteGames));
   }, [visible, profile]);
 
@@ -440,6 +442,7 @@ function EditProfileModal({
         username: username.trim(),
         bio: bio.trim(),
         location: location.trim(),
+        phone: phone.trim() || null,
         favorite_games: [...games],
       });
       onSaved();
@@ -511,6 +514,20 @@ function EditProfileModal({
               value={location}
               onChangeText={setLocation}
               placeholder="z.B. Kreuzberg"
+              containerStyle={{ marginTop: 6 }}
+            />
+            <Text
+              style={[styles.fieldLabel, { color: p.textMuted, marginTop: spacing.lg }]}
+            >
+              Telefon
+            </Text>
+            <TextField
+              icon="call-outline"
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="+49 …"
+              keyboardType="phone-pad"
+              autoComplete="tel"
               containerStyle={{ marginTop: 6 }}
             />
             <Text

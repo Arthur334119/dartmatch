@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   KeyboardAvoidingView,
   Linking,
   Platform,
+  FlatList,
+  Dimensions,
   useColorScheme,
 } from 'react-native';
 import Animated, {
@@ -48,6 +50,7 @@ import {
   checkOut,
   addReview,
 } from '@/lib/data';
+import { supabase, TABLES } from '@/lib/supabase';
 import {
   BAR_GAME_LABELS,
   BAR_FEATURE_LABELS,
@@ -82,6 +85,8 @@ export default function BarDetailScreen() {
   const [checkingIn, setCheckingIn] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [places, setPlaces] = useState<GooglePlaceDetails | null>(null);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryStartIndex, setGalleryStartIndex] = useState(0);
 
   const scrollY = useSharedValue(0);
   const [statusBarLight, setStatusBarLight] = useState(true);
@@ -151,6 +156,33 @@ export default function BarDetailScreen() {
     load();
   }, [id]);
 
+  // Realtime: Presence-Counter live aktualisieren, wenn jemand
+  // ein-/auscheckt. Bei jedem Event aus der presence-Tabelle für
+  // dieses Bar einfach refetchen — billiger als die Row selbst zu
+  // mergen (expires_at-Filter ist im count drin).
+  useEffect(() => {
+    if (!id) return;
+    const channel = supabase
+      .channel(`presence-bar-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: TABLES.presence,
+          filter: `bar_id=eq.${id}`,
+        },
+        async () => {
+          const c = await getPresenceCount(id);
+          setPresence(c);
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id]);
+
   async function load() {
     if (!id) return;
     const [b, r, c, pCount] = await Promise.all([
@@ -174,7 +206,16 @@ export default function BarDetailScreen() {
 
   // Hero-Foto: wenn Google-Photos verfügbar, nimm das erste — sonst
   // das in der DB gespeicherte (Unsplash-Fallback aus 20260429-Migration).
-  const heroImageUrl = places?.photos[0]?.url ?? bar?.imageUrl ?? null;
+  const photos = places?.photos ?? [];
+  const heroImageUrl = photos[0]?.url ?? bar?.imageUrl ?? null;
+  const hasGallery = photos.length > 1;
+
+  function openGalleryAt(idx: number) {
+    if (!hasGallery) return;
+    haptic.light();
+    setGalleryStartIndex(idx);
+    setGalleryOpen(true);
+  }
 
   async function toggleCheck() {
     if (!bar || checkingIn) return;
@@ -289,7 +330,14 @@ export default function BarDetailScreen() {
         <View style={styles.heroWrap}>
           <Animated.View style={[StyleSheet.absoluteFill, heroParallaxStyle]}>
             {heroImageUrl ? (
-              <Image source={{ uri: heroImageUrl }} style={styles.hero} />
+              <TouchableOpacity
+                activeOpacity={hasGallery ? 0.92 : 1}
+                onPress={() => openGalleryAt(0)}
+                disabled={!hasGallery}
+                style={styles.hero}
+              >
+                <Image source={{ uri: heroImageUrl }} style={styles.hero} />
+              </TouchableOpacity>
             ) : (
               <View style={[styles.hero, styles.heroFallback]}>
                 <Ionicons name="beer" size={88} color={alpha('#fff', 0.85)} />
@@ -327,6 +375,18 @@ export default function BarDetailScreen() {
                     {presence} vor Ort
                   </Text>
                 </View>
+              )}
+              {hasGallery && (
+                <TouchableOpacity
+                  onPress={() => openGalleryAt(0)}
+                  activeOpacity={0.85}
+                  style={[styles.galleryPill, { backgroundColor: alpha('#000', 0.55) }]}
+                >
+                  <Ionicons name="images" size={12} color="#fff" />
+                  <Text style={styles.presencePillText}>
+                    1 / {photos.length}
+                  </Text>
+                </TouchableOpacity>
               )}
             </View>
             <Text style={styles.heroTitle} numberOfLines={2}>
@@ -690,6 +750,13 @@ export default function BarDetailScreen() {
           }
         />
       </View>
+
+      <PhotoGalleryModal
+        visible={galleryOpen}
+        photos={photos}
+        startIndex={galleryStartIndex}
+        onClose={() => setGalleryOpen(false)}
+      />
 
       <AddReviewModal
         visible={reviewOpen}
@@ -1137,6 +1204,114 @@ function AddReviewModal({
   );
 }
 
+function PhotoGalleryModal({
+  visible,
+  photos,
+  startIndex,
+  onClose,
+}: {
+  visible: boolean;
+  photos: import('@/lib/types').GooglePlacePhoto[];
+  startIndex: number;
+  onClose: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const listRef = useRef<FlatList>(null);
+  const [activeIndex, setActiveIndex] = useState(startIndex);
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+  // Wenn Modal aufgeht, springe zum richtigen Foto.
+  useEffect(() => {
+    if (!visible) return;
+    setActiveIndex(startIndex);
+    // initialScrollIndex auf FlatList ist unzuverlässig wenn Items
+    // gleich groß sind und schon gemounted — mit scrollToIndex robuster.
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToIndex({
+        index: startIndex,
+        animated: false,
+      });
+    });
+  }, [visible, startIndex]);
+
+  const activePhoto = photos[activeIndex];
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      <View style={styles.galleryRoot}>
+        <FlatList
+          ref={listRef}
+          data={photos}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(_, i) => `gallery-${i}`}
+          getItemLayout={(_, index) => ({
+            length: screenWidth,
+            offset: screenWidth * index,
+            index,
+          })}
+          onMomentumScrollEnd={(e) => {
+            const idx = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+            setActiveIndex(idx);
+          }}
+          renderItem={({ item }) => (
+            <View
+              style={{
+                width: screenWidth,
+                height: screenHeight,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Image
+                source={{ uri: item.url }}
+                style={{ width: screenWidth, height: '100%' }}
+                resizeMode="contain"
+              />
+            </View>
+          )}
+        />
+
+        <TouchableOpacity
+          style={[styles.galleryClose, { top: insets.top + 8 }]}
+          onPress={onClose}
+          hitSlop={12}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="close" size={22} color="#fff" />
+        </TouchableOpacity>
+
+        <View style={[styles.galleryCounter, { top: insets.top + 14 }]}>
+          <Text style={styles.galleryCounterText}>
+            {activeIndex + 1} / {photos.length}
+          </Text>
+        </View>
+
+        {activePhoto?.attribution ? (
+          <View
+            style={[
+              styles.galleryAttribution,
+              { paddingBottom: insets.bottom + 12 },
+            ]}
+            pointerEvents="none"
+          >
+            <Text style={styles.galleryAttributionText} numberOfLines={2}>
+              {activePhoto.attribution}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+    </Modal>
+  );
+}
+
 function ratingLabel(r: number): string {
   if (r <= 1) return 'Eher meh';
   if (r === 2) return 'Geht so';
@@ -1240,6 +1415,14 @@ const styles = StyleSheet.create({
   heroRatingText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   heroRatingMuted: { color: alpha('#fff', 0.75), fontSize: 11 },
   presencePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radii.pill,
+  },
+  galleryPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -1435,5 +1618,51 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
+  },
+  galleryRoot: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  galleryClose: {
+    position: 'absolute',
+    right: spacing.md,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: alpha('#000', 0.55),
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  galleryCounter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 9,
+  },
+  galleryCounterText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: alpha('#000', 0.55),
+    borderRadius: radii.pill,
+    overflow: 'hidden',
+  },
+  galleryAttribution: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    backgroundColor: alpha('#000', 0.6),
+  },
+  galleryAttributionText: {
+    color: alpha('#fff', 0.8),
+    fontSize: 11,
+    textAlign: 'center',
   },
 });

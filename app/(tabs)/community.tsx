@@ -21,6 +21,7 @@ import {
 import { Post } from '@/lib/types';
 import { getPosts, deletePost } from '@/lib/data';
 import { getCurrentUser } from '@/lib/auth';
+import { supabase, TABLES } from '@/lib/supabase';
 import { POST_TYPE_LOOKING, POST_TYPE_PLAYING } from '@/lib/constants';
 import { PostCard } from '@/components/PostCard';
 import { EmptyState } from '@/components/EmptyState';
@@ -66,6 +67,26 @@ export default function CommunityScreen() {
       load();
     }, [load]),
   );
+
+  // Realtime: Feed live halten. Bei INSERT/DELETE komplett refetchen,
+  // weil INSERT-Payloads keine joins (profiles, bars) liefern und der
+  // Filter (type) clientseitig sitzt — refetch ist hier robuster als
+  // Row-Merging.
+  useEffect(() => {
+    const channel = supabase
+      .channel('posts-feed')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: TABLES.posts },
+        () => {
+          load();
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [load]);
 
   async function onRefresh() {
     setRefreshing(true);
