@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -6,8 +7,10 @@ import {
   StyleSheet,
   useColorScheme,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { Post, isPostExpired } from '@/lib/types';
 import { BAR_GAME_LABELS } from '@/lib/constants';
 import {
@@ -21,6 +24,9 @@ import {
 } from '@/lib/colors';
 import { timeAgo, formatTimeOfDay } from '@/lib/relative-time';
 import { PressableCard } from '@/components/PressableCard';
+import { getOrCreateChat } from '@/lib/chat';
+import { showAlert } from '@/lib/alert';
+import { haptic } from '@/lib/haptics';
 
 type Props = {
   post: Post;
@@ -37,6 +43,7 @@ export function PostCard({ post, currentUserId, onDelete, onBarPress }: Props) {
   const expired = isPostExpired(post);
   const accent = isPlaying ? colors.success : colors.primary;
   const accentSoft = isPlaying ? alpha(colors.success, 0.14) : p.primarySoft;
+  const [openingChat, setOpeningChat] = useState(false);
 
   function confirmDelete() {
     Alert.alert(
@@ -47,6 +54,24 @@ export function PostCard({ post, currentUserId, onDelete, onBarPress }: Props) {
         { text: 'Löschen', style: 'destructive', onPress: onDelete },
       ],
     );
+  }
+
+  async function startChat() {
+    if (!post.userId || isOwner || openingChat) return;
+    setOpeningChat(true);
+    try {
+      const chatId = await getOrCreateChat(post.userId, post.id);
+      haptic.selection();
+      router.push(`/chat/${chatId}` as any);
+    } catch (e: any) {
+      console.error('[post] chat open failed', e);
+      showAlert(
+        'Chat konnte nicht geöffnet werden',
+        e?.message ?? 'Bitte erneut versuchen.',
+      );
+    } finally {
+      setOpeningChat(false);
+    }
   }
 
   return (
@@ -163,6 +188,29 @@ export function PostCard({ post, currentUserId, onDelete, onBarPress }: Props) {
             />
           )}
         </View>
+
+        {!isOwner && !expired && (
+          <TouchableOpacity
+            style={[
+              styles.dmButton,
+              { borderColor: alpha(accent, 0.3), backgroundColor: accentSoft },
+            ]}
+            onPress={startChat}
+            activeOpacity={0.85}
+            disabled={openingChat}
+          >
+            {openingChat ? (
+              <ActivityIndicator size="small" color={accent} />
+            ) : (
+              <>
+                <Ionicons name="chatbubble-ellipses" size={15} color={accent} />
+                <Text style={[styles.dmButtonText, { color: accent }]}>
+                  Nachricht schreiben
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -251,4 +299,15 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   meta: { flexDirection: 'row', alignItems: 'center' },
+  dmButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: spacing.md,
+    paddingVertical: 10,
+    borderRadius: radii.md,
+    borderWidth: 1,
+  },
+  dmButtonText: { fontWeight: '700', fontSize: 13 },
 });
