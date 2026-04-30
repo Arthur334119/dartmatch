@@ -102,6 +102,38 @@ export async function updateProfile(
 }
 
 /**
+ * Prüft via Edge Function (Google Cloud Vision), ob auf dem Bild genau
+ * ein Gesicht erkennbar ist. Wirft mit klarer Nachricht, wenn nicht.
+ *
+ * `base64` ist die rohe Base64-Repräsentation des Bildes (ohne data:-Prefix).
+ * Aus expo-image-picker bekommt man sie via `{ base64: true }`.
+ */
+export async function validateFace(base64: string): Promise<void> {
+  const { data, error } = await supabase.functions.invoke<{
+    ok: boolean;
+    face_count: number;
+    confidence?: number;
+    reason?: string;
+  }>('validate-face', {
+    body: { image_base64: base64 },
+  });
+  if (error) {
+    // FunctionsHttpError lässt sich oft nur über response.text() auslesen
+    // — wir geben eine generische Meldung, der Server-Log hat Details.
+    console.warn('[validate-face] invoke error', error);
+    throw new Error(
+      'Gesichtserkennung nicht erreichbar. Bitte erneut versuchen.',
+    );
+  }
+  if (!data) {
+    throw new Error('Gesichtserkennung lieferte keine Antwort.');
+  }
+  if (!data.ok) {
+    throw new Error(data.reason ?? 'Kein Gesicht erkannt.');
+  }
+}
+
+/**
  * Lädt ein Profilbild zu Supabase Storage hoch und setzt avatar_url im Profil.
  * Pfad: avatars/{userId}/avatar_{timestamp}.{ext}
  *

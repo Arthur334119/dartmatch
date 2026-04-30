@@ -7,5 +7,25 @@
 --   posts    → Community-Feed live halten
 --   presence → "Vor Ort"-Counter live halten
 
-alter publication supabase_realtime add table public.posts;
-alter publication supabase_realtime add table public.presence;
+-- Idempotent: nur hinzufügen, wenn die Tabelle noch nicht in der
+-- Publication ist. Sonst kracht ein erneuter Lauf mit SQLSTATE 42710.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'posts'
+  ) then
+    alter publication supabase_realtime add table public.posts;
+  end if;
+
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'presence'
+  ) then
+    alter publication supabase_realtime add table public.presence;
+  end if;
+end $$;

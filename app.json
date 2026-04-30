@@ -12,7 +12,6 @@
       "supportsTablet": true,
       "bundleIdentifier": "de.arthur33.kneipenfinder",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Wir brauchen Zugriff auf deine Fotos, damit du dein Profilbild auswählen kannst.",
         "NSCameraUsageDescription": "Wir brauchen Zugriff auf deine Kamera, damit du ein Profilbild aufnehmen kannst.",
         "NSLocationWhenInUseUsageDescription": "Wir nutzen deinen Standort, um Kneipen in deiner Nähe zu finden."
       }
@@ -54,7 +53,6 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Wir brauchen Zugriff auf deine Fotos, damit du dein Profilbild auswählen kannst.",
           "cameraPermission": "Wir brauchen Zugriff auf deine Kamera, damit du ein Profilbild aufnehmen kannst."
         }
       ],

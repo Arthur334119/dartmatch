@@ -28,7 +28,8 @@ import {
   alpha,
 } from '@/lib/colors';
 import { UserProfile } from '@/lib/types';
-import { getProfile, updateProfile, uploadAvatar } from '@/lib/data';
+import { getProfile, updateProfile, uploadAvatar, validateFace } from '@/lib/data';
+import { validatePhone } from '@/lib/phone';
 import { SkeletonBlock } from '@/components/Skeleton';
 import { PressableCard } from '@/components/PressableCard';
 import { TextField } from '@/components/TextField';
@@ -73,27 +74,44 @@ export default function ProfileScreen() {
   }
 
   async function handleAvatar() {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Fotos-Zugriff erforderlich');
+      Alert.alert(
+        'Kamera-Zugriff erforderlich',
+        'Bitte in den Einstellungen aktivieren — wir brauchen die Kamera, um dein Gesicht zu prüfen.',
+      );
       return;
     }
-    const res = await ImagePicker.launchImageLibraryAsync({
+    const res = await ImagePicker.launchCameraAsync({
       mediaTypes: ['images'],
+      cameraType: ImagePicker.CameraType.front,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.85,
+      quality: 0.7,
+      base64: true,
     });
     if (res.canceled) return;
     const asset = res.assets[0];
     if (!asset) return;
+    if (!asset.base64) {
+      Alert.alert(
+        'Foto unvollständig',
+        'Bitte erneut aufnehmen — die App konnte das Bild nicht lesen.',
+      );
+      return;
+    }
 
     setUploading(true);
     try {
+      await validateFace(asset.base64);
       await uploadAvatar(asset.uri);
       await load();
     } catch (e: any) {
-      Alert.alert('Upload fehlgeschlagen', e?.message ?? '');
+      console.error('[profile] avatar pipeline failed', e);
+      Alert.alert(
+        'Foto nicht akzeptiert',
+        e?.message ?? 'Unbekannter Fehler. Bitte erneut versuchen.',
+      );
     } finally {
       setUploading(false);
     }
@@ -436,13 +454,26 @@ function EditProfileModal({
 
   async function save() {
     if (!profile) return;
+    // Telefon ist im Edit-Modal optional. Wenn etwas drin steht, muss es
+    // aber valide sein — sonst kommen am Ende Müll-Nummern in der DB.
+    let normalizedPhone: string | null = null;
+    const trimmedPhone = phone.trim();
+    if (trimmedPhone) {
+      const phoneCheck = validatePhone(trimmedPhone);
+      if (!phoneCheck.valid) {
+        Alert.alert('Telefonnummer', phoneCheck.reason);
+        return;
+      }
+      normalizedPhone = phoneCheck.e164;
+    }
+
     setSaving(true);
     try {
       await updateProfile(profile.id, {
         username: username.trim(),
         bio: bio.trim(),
         location: location.trim(),
-        phone: phone.trim() || null,
+        phone: normalizedPhone,
         favorite_games: [...games],
       });
       onSaved();

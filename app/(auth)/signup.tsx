@@ -20,6 +20,7 @@ import {
   radii,
 } from '@/lib/colors';
 import { signup } from '@/lib/auth';
+import { validatePhone } from '@/lib/phone';
 import { PressableButton } from '@/components/PressableButton';
 import { TextField } from '@/components/TextField';
 
@@ -37,14 +38,6 @@ export default function SignupScreen() {
   const [obscureConfirm, setObscureConfirm] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  // Akzeptiert deutsche Formate: +49…, 0049…, 0…, mit Leerzeichen/Bindestrich/(0).
-  // Mindestens 7 reine Ziffern, sonst zu kurz für eine sinnvolle Nummer.
-  function isValidPhone(raw: string): boolean {
-    const digits = raw.replace(/[^\d]/g, '');
-    if (digits.length < 7) return false;
-    return /^[+0\d][\d\s\-()/]{6,}$/.test(raw.trim());
-  }
-
   async function handleSignup() {
     if (loading) return;
     if (username.trim().length < 3) {
@@ -55,8 +48,9 @@ export default function SignupScreen() {
       showAlert('Ungültige E-Mail');
       return;
     }
-    if (!isValidPhone(phone)) {
-      showAlert('Telefonnummer', 'Bitte eine gültige Nummer eingeben (z. B. +49 170 1234567).');
+    const phoneCheck = validatePhone(phone);
+    if (!phoneCheck.valid) {
+      showAlert('Telefonnummer', phoneCheck.reason);
       return;
     }
     if (password.length < 6) {
@@ -69,7 +63,8 @@ export default function SignupScreen() {
     }
     setLoading(true);
     try {
-      await signup(email.trim(), password, username.trim(), phone.trim());
+      // E.164-Format speichern, damit alle Nummern in der DB konsistent sind.
+      await signup(email.trim(), password, username.trim(), phoneCheck.e164);
       showAlert('Account erstellt', 'Bitte E-Mail bestätigen.');
       router.back();
     } catch (e: any) {
@@ -83,7 +78,7 @@ export default function SignupScreen() {
   }
 
   const passwordsMatch = password.length > 0 && password === confirm;
-  const phoneValid = phone.length === 0 || isValidPhone(phone);
+  const phoneValid = phone.length === 0 || validatePhone(phone).valid;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: p.bg }}>

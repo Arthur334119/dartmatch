@@ -22,7 +22,7 @@ import {
   shadows,
 } from '@/lib/colors';
 import { useAuth, logout, resendVerification } from '@/lib/auth';
-import { uploadAvatar, getProfile } from '@/lib/data';
+import { uploadAvatar, getProfile, validateFace } from '@/lib/data';
 import { PressableButton } from '@/components/PressableButton';
 
 export default function VerifyScreen() {
@@ -96,26 +96,48 @@ export default function VerifyScreen() {
   }
 
   async function handlePickAvatar() {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
       showAlert(
-        'Fotos-Zugriff erforderlich',
-        'Bitte in den Einstellungen aktivieren.',
+        'Kamera-Zugriff erforderlich',
+        'Bitte in den Einstellungen aktivieren — wir brauchen die Kamera, um dein Gesicht zu prüfen.',
       );
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ['images'],
+      cameraType: ImagePicker.CameraType.front,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.85,
+      // 0.7 reicht für ein 1:1-Avatar und hält den Base64-Body unter 4 MB.
+      quality: 0.7,
+      base64: true,
     });
     if (result.canceled) return;
     const asset = result.assets[0];
     if (!asset) return;
+    if (!asset.base64) {
+      showAlert(
+        'Foto unvollständig',
+        'Bitte erneut aufnehmen — die App konnte das Bild nicht lesen.',
+      );
+      return;
+    }
 
     setUploading(true);
     try {
+      // Erst Face-Check (server-seitig, ~1s), dann Upload. Wenn der Check
+      // fehlschlägt, gar nicht erst hochladen — spart Storage-Mülleinträge.
+      await Promise.race([
+        validateFace(asset.base64),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Timeout: Gesichtserkennung dauert zu lange')),
+            15000,
+          ),
+        ),
+      ]);
+
       const url = await Promise.race([
         uploadAvatar(asset.uri),
         new Promise<string>((_, reject) =>
@@ -127,8 +149,11 @@ export default function VerifyScreen() {
       ]);
       setAvatarUrl(url);
     } catch (e: any) {
-      console.error('[verify] uploadAvatar failed', e);
-      showAlert('Upload fehlgeschlagen', e?.message ?? 'Unbekannter Fehler');
+      console.error('[verify] avatar pipeline failed', e);
+      showAlert(
+        'Foto nicht akzeptiert',
+        e?.message ?? 'Unbekannter Fehler. Bitte erneut versuchen.',
+      );
     } finally {
       setUploading(false);
     }
@@ -223,8 +248,8 @@ export default function VerifyScreen() {
           p={p}
           done={!!avatarUrl}
           number="2"
-          title="Profilbild hochladen"
-          description="Ein echtes Foto hilft anderen, dich in der Kneipe zu erkennen."
+          title="Profilbild aufnehmen"
+          description="Mach ein Live-Selfie mit der Kamera. Wir prüfen automatisch, dass dein Gesicht gut erkennbar ist — kein Upload aus der Galerie."
         >
           <View style={styles.avatarRow}>
             <TouchableOpacity
@@ -261,7 +286,7 @@ export default function VerifyScreen() {
                 <>
                   <Ionicons name="camera" size={16} color="#fff" />
                   <Text style={styles.primaryBtnText}>
-                    {avatarUrl ? 'Foto ändern' : 'Foto wählen'}
+                    {avatarUrl ? 'Neu aufnehmen' : 'Selfie aufnehmen'}
                   </Text>
                 </>
               )}
