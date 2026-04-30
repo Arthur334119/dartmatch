@@ -33,8 +33,7 @@ import { SkeletonBlock } from '@/components/Skeleton';
 import { PressableCard } from '@/components/PressableCard';
 import { TextField } from '@/components/TextField';
 import { SectionLabel } from '@/components/SectionLabel';
-import { logout } from '@/lib/auth';
-import { supabase } from '@/lib/supabase';
+import { logout, getCurrentUser } from '@/lib/auth';
 import { DART_GAME_TYPES } from '@/lib/constants';
 import { clearCredentials } from '@/lib/secure-credentials';
 
@@ -50,8 +49,7 @@ export default function ProfileScreen() {
   const [editOpen, setEditOpen] = useState(false);
 
   const load = useCallback(async () => {
-    const { data } = await supabase.auth.getUser();
-    const u = data.user;
+    const u = await getCurrentUser();
     if (!u) return;
     setEmail(u.email ?? '');
     const prof = await getProfile(u.id);

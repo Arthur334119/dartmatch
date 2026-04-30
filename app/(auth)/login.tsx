@@ -5,12 +5,12 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
   useColorScheme,
 } from 'react-native';
+import { showAlert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -53,18 +53,18 @@ export default function LoginScreen() {
   async function handleLogin() {
     if (loading) return;
     if (!email.includes('@')) {
-      Alert.alert('Ungültige E-Mail');
+      showAlert('Ungültige E-Mail');
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Passwort zu kurz', 'Mindestens 6 Zeichen.');
+      showAlert('Passwort zu kurz', 'Mindestens 6 Zeichen.');
       return;
     }
     setLoading(true);
     try {
       await login(email.trim(), password);
     } catch (e: any) {
-      Alert.alert('Login fehlgeschlagen', e?.message ?? 'Bitte erneut versuchen.');
+      showAlert('Login fehlgeschlagen', e?.message ?? 'Bitte erneut versuchen.');
       setLoading(false);
       return;
     }

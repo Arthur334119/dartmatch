@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Post, isPostExpired } from '@/lib/types';
+import { BAR_GAME_LABELS } from '@/lib/constants';
 import {
   palette,
   colors,
@@ -108,7 +109,7 @@ export function PostCard({ post, currentUserId, onDelete, onBarPress }: Props) {
           {post.gameType && (
             <View style={[styles.gameChip, { backgroundColor: p.surfaceMuted }]}>
               <Text style={{ color: p.text, fontWeight: '700', fontSize: 12 }}>
-                {post.gameType}
+                {BAR_GAME_LABELS[post.gameType] ?? post.gameType}
               </Text>
             </View>
           )}

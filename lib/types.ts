@@ -26,6 +26,7 @@ export type UserProfile = {
   avatarUrl: string | null;
   favoriteGames: string[];
   location: string | null;
+  phone: string | null;
   createdAt: string;
 };
 
@@ -119,6 +120,7 @@ export function profileFromRow(row: Record<string, any>): UserProfile {
     avatarUrl: row.avatar_url ?? null,
     favoriteGames: parseStringArray(row.favorite_games),
     location: row.location ?? null,
+    phone: row.phone ?? null,
     createdAt: String(row.created_at ?? new Date().toISOString()),
   };
 }

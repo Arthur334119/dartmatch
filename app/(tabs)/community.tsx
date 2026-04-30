@@ -20,8 +20,8 @@ import {
 } from '@/lib/colors';
 import { Post } from '@/lib/types';
 import { getPosts, deletePost } from '@/lib/data';
+import { getCurrentUser } from '@/lib/auth';
 import { POST_TYPE_LOOKING, POST_TYPE_PLAYING } from '@/lib/constants';
-import { supabase } from '@/lib/supabase';
 import { PostCard } from '@/components/PostCard';
 import { EmptyState } from '@/components/EmptyState';
 import { PostCardSkeleton } from '@/components/Skeleton';
@@ -53,7 +53,7 @@ export default function CommunityScreen() {
   }, [filterType]);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? ''));
+    getCurrentUser().then((u) => setUserId(u?.id ?? ''));
   }, []);
 
   useEffect(() => {

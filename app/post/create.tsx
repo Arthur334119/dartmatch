@@ -16,6 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { showAlert } from '@/lib/alert';
 import {
   palette,
   colors,
@@ -26,14 +27,14 @@ import {
   type Palette,
 } from '@/lib/colors';
 import {
-  DART_GAME_TYPES,
+  BAR_GAMES,
+  BAR_GAME_LABELS,
   POST_TYPE_LOOKING,
   POST_TYPE_PLAYING,
 } from '@/lib/constants';
 import { Bar } from '@/lib/types';
 import { getAllBars, createPost } from '@/lib/data';
 import { isFullyVerified } from '@/lib/auth';
-import { supabase } from '@/lib/supabase';
 import { haptic } from '@/lib/haptics';
 import { PressableButton } from '@/components/PressableButton';
 import { PressableCard } from '@/components/PressableCard';
@@ -67,31 +68,48 @@ export default function CreatePostScreen() {
     getAllBars().then(setBars);
   }, []);
 
+  // Spielangebot der gewählten Bar (oder alle Bar-Spiele, wenn keine Bar gewählt).
+  // Bei Bar-Wechsel: wenn das aktuell gewählte Spiel dort nicht angeboten wird,
+  // setzen wir es zurück, damit kein "ungültiger" Wert hängen bleibt.
+  const availableGames = bar ? bar.games : BAR_GAMES;
+  useEffect(() => {
+    if (game && !availableGames.includes(game)) setGame(null);
+  }, [bar?.id]);
+
   async function handleSubmit() {
     if (loading) return;
     if (content.trim().length === 0) {
-      Alert.alert('Bitte schreibe eine Nachricht.');
+      showAlert('Bitte schreibe eine Nachricht.');
       return;
     }
     setLoading(true);
     try {
-      try {
-        await supabase.auth.refreshSession();
-      } catch {}
+      // Kein supabase.auth.refreshSession() mehr — kollidiert mit Supabases
+      // Auto-Refresh-Lock und führt zu "Lock was stolen"-Crashs auf Web.
+      // isFullyVerified() liest die lokale Session + DB direkt.
       const verified = await isFullyVerified();
       if (!verified) {
-        const goVerify = await new Promise<boolean>((resolve) => {
-          Alert.alert(
-            'Profil noch nicht verifiziert',
-            'Du musst deine E-Mail bestätigen und ein Profilbild hochladen, bevor du Posts erstellen kannst.',
-            [
-              { text: 'Später', style: 'cancel', onPress: () => resolve(false) },
-              { text: 'Jetzt verifizieren', onPress: () => resolve(true) },
-            ],
-          );
-        });
-        if (goVerify) {
-          router.replace('/(auth)/verify');
+        if (Platform.OS === 'web') {
+          const go = typeof window !== 'undefined' && typeof window.confirm === 'function'
+            ? window.confirm(
+                'Profil noch nicht verifiziert.\n\nDu musst deine E-Mail bestätigen und ein Profilbild hochladen, bevor du Posts erstellen kannst.\n\nJetzt verifizieren?',
+              )
+            : false;
+          if (go) router.replace('/(auth)/verify');
+        } else {
+          const goVerify = await new Promise<boolean>((resolve) => {
+            Alert.alert(
+              'Profil noch nicht verifiziert',
+              'Du musst deine E-Mail bestätigen und ein Profilbild hochladen, bevor du Posts erstellen kannst.',
+              [
+                { text: 'Später', style: 'cancel', onPress: () => resolve(false) },
+                { text: 'Jetzt verifizieren', onPress: () => resolve(true) },
+              ],
+            );
+          });
+          if (goVerify) {
+            router.replace('/(auth)/verify');
+          }
         }
         setLoading(false);
         return;
@@ -108,13 +126,14 @@ export default function CreatePostScreen() {
       haptic.success();
       router.back();
     } catch (e: any) {
+      console.error('[create-post] failed', e);
       const msg =
         e?.code === '42501'
           ? 'Du bist noch nicht verifiziert. Bitte E-Mail bestätigen und ein Profilbild hochladen.'
           : e?.code === '23514'
             ? `Ungültiger Wert: ${e.message}`
             : e?.message ?? 'Post fehlgeschlagen.';
-      Alert.alert('Fehler', msg);
+      showAlert('Fehler', msg);
     } finally {
       setLoading(false);
     }
@@ -178,35 +197,49 @@ export default function CreatePostScreen() {
             </View>
           </Section>
 
-          <Section label="Spielmodus" p={p} optional>
-            <View style={styles.chipsWrap}>
-              {DART_GAME_TYPES.map((g) => {
-                const active = game === g;
-                return (
-                  <TouchableOpacity
-                    key={g}
-                    style={[
-                      styles.chip,
-                      {
-                        backgroundColor: active ? p.primarySoft : p.surface,
-                        borderColor: active ? colors.primary : p.divider,
-                      },
-                    ]}
-                    onPress={() => setGame(active ? null : g)}
-                    activeOpacity={0.85}
-                  >
-                    <Text
-                      style={{
-                        color: active ? colors.primaryDeep : p.text,
-                        fontWeight: active ? '700' : '500',
-                      }}
+          <Section label="Spiel" p={p} optional>
+            {availableGames.length === 0 ? (
+              <Text style={{ color: p.textMuted, fontSize: 13 }}>
+                {bar
+                  ? 'Diese Kneipe hat keine Spiele hinterlegt.'
+                  : 'Wähle eine Kneipe oder spiele frei.'}
+              </Text>
+            ) : (
+              <View style={styles.chipsWrap}>
+                {availableGames.map((g) => {
+                  const active = game === g;
+                  const label = BAR_GAME_LABELS[g] ?? g;
+                  return (
+                    <TouchableOpacity
+                      key={g}
+                      style={[
+                        styles.chip,
+                        {
+                          backgroundColor: active ? p.primarySoft : p.surface,
+                          borderColor: active ? colors.primary : p.divider,
+                        },
+                      ]}
+                      onPress={() => setGame(active ? null : g)}
+                      activeOpacity={0.85}
                     >
-                      {g}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+                      <Text
+                        style={{
+                          color: active ? colors.primaryDeep : p.text,
+                          fontWeight: active ? '700' : '500',
+                        }}
+                      >
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+            {bar && (
+              <Text style={{ color: p.textMuted, fontSize: 11, marginTop: 6 }}>
+                Auswahl auf {bar.name} beschränkt.
+              </Text>
+            )}
           </Section>
 
           <Section label="Kneipe" p={p} optional>

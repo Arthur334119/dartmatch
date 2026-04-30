@@ -10,7 +10,7 @@ import {
   reviewFromRow,
   isPostExpired,
 } from './types';
-import { ensureCurrentUserProfile } from './auth';
+import { ensureCurrentUserProfile, getCurrentUser } from './auth';
 import { haversineKm } from './distance';
 
 // ── BARS ──────────────────────────────────────────────────────────────
@@ -63,9 +63,13 @@ export async function updateProfile(
   userId: string,
   patch: Record<string, unknown>,
 ): Promise<void> {
+  // Update statt Upsert: Aufrufer (z. B. uploadAvatar) müssen vorher
+  // ensureCurrentUserProfile() aufrufen, sonst würde ein Upsert ohne
+  // username am NOT-NULL-Constraint scheitern.
   const { error } = await supabase
     .from(TABLES.profiles)
-    .upsert({ id: userId, ...patch });
+    .update(patch)
+    .eq('id', userId);
   if (error) throw error;
 }
 
@@ -77,7 +81,7 @@ export async function updateProfile(
  * über fetch() in einen ArrayBuffer geladen wird.
  */
 export async function uploadAvatar(localUri: string): Promise<string> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) throw new Error('Nicht angemeldet');
 
   // Profil muss existieren, bevor `avatar_url` gesetzt wird – sonst
@@ -130,7 +134,7 @@ export async function addReview(input: {
   rating: number;
   content: string;
 }): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) throw new Error('Nicht angemeldet');
 
   const { error } = await supabase.from(TABLES.reviews).insert({
@@ -183,7 +187,7 @@ export async function createPost(input: {
   playerCount: number | null;
   durationHours: number | null;
 }): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) throw new Error('Nicht angemeldet');
 
   const expiresAt = input.durationHours
@@ -210,7 +214,7 @@ export async function deletePost(postId: string): Promise<void> {
 // ── PRESENCE ──────────────────────────────────────────────────────────
 
 export async function checkIn(barId: string): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) throw new Error('Nicht angemeldet');
 
   const now = new Date();
@@ -226,7 +230,7 @@ export async function checkIn(barId: string): Promise<void> {
 }
 
 export async function checkOut(barId: string): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return;
   await supabase
     .from(TABLES.presence)
@@ -236,7 +240,7 @@ export async function checkOut(barId: string): Promise<void> {
 }
 
 export async function isCheckedIn(barId: string): Promise<boolean> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) return false;
   const now = new Date().toISOString();
   const { data } = await supabase

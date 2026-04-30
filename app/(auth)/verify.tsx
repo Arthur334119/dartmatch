@@ -6,10 +6,10 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
-  Alert,
   StyleSheet,
   useColorScheme,
 } from 'react-native';
+import { showAlert } from '@/lib/alert';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
@@ -23,7 +23,6 @@ import {
 } from '@/lib/colors';
 import { useAuth, logout, resendVerification } from '@/lib/auth';
 import { uploadAvatar, getProfile } from '@/lib/data';
-import { supabase } from '@/lib/supabase';
 import { PressableButton } from '@/components/PressableButton';
 
 export default function VerifyScreen() {
@@ -35,60 +34,71 @@ export default function VerifyScreen() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [continuing, setContinuing] = useState(false);
 
   useEffect(() => {
-    refresh();
-  }, []);
+    if (user) refresh(false);
+  }, [user?.id]);
 
-  async function refresh() {
+  function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+    return Promise.race<T>([
+      p,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(`Timeout: ${label}`)), ms),
+      ),
+    ]);
+  }
+
+  async function refresh(showErrors = true) {
+    if (!user) return;
     setRefreshing(true);
     try {
-      const withTimeout = <T,>(p: Promise<T>, ms: number, label: string) =>
-        Promise.race<T>([
-          p,
-          new Promise<T>((_, reject) =>
-            setTimeout(() => reject(new Error(`Timeout: ${label}`)), ms),
-          ),
-        ]);
+      // E-Mail-Status kommt aus der lokalen Session — kein Netzwerk-Call.
+      // Wenn der User gerade die Mail bestätigt hat, holt der manuelle
+      // "Status erneut prüfen"-Button die Session vom Server frisch.
+      setEmailConfirmed(!!user.email_confirmed_at);
 
-      const { data, error } = await withTimeout(
-        supabase.auth.getUser(),
+      const profile = await withTimeout(
+        getProfile(user.id),
         8000,
-        'getUser',
+        'getProfile',
       );
-      if (error) throw error;
-      const u = data.user;
-      setEmailConfirmed(!!u?.email_confirmed_at);
-      if (u) {
-        const profile = await withTimeout(
-          getProfile(u.id),
-          8000,
-          'getProfile',
-        );
-        setAvatarUrl(profile?.avatarUrl ?? null);
-      }
+      setAvatarUrl(profile?.avatarUrl ?? null);
     } catch (e: any) {
       console.error('[verify] refresh failed', e);
-      Alert.alert('Status konnte nicht geladen werden', e?.message ?? '');
+      if (showErrors) {
+        showAlert('Status konnte nicht geladen werden', e?.message ?? '');
+      }
     } finally {
       setRefreshing(false);
     }
+  }
+
+  async function handleManualRefresh() {
+    try {
+      await withTimeout(refreshVerification(), 8000, 'refreshVerification');
+    } catch (e: any) {
+      console.error('[verify] manual refresh failed', e);
+      showAlert('Aktualisierung fehlgeschlagen', e?.message ?? '');
+      return;
+    }
+    await refresh(true);
   }
 
   async function handleResend() {
     if (!user?.email) return;
     try {
       await resendVerification(user.email);
-      Alert.alert('Mail erneut gesendet');
+      showAlert('Mail erneut gesendet');
     } catch (e: any) {
-      Alert.alert('Fehler', e?.message ?? 'Senden fehlgeschlagen.');
+      showAlert('Fehler', e?.message ?? 'Senden fehlgeschlagen.');
     }
   }
 
   async function handlePickAvatar() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert(
+      showAlert(
         'Fotos-Zugriff erforderlich',
         'Bitte in den Einstellungen aktivieren.',
       );
@@ -118,7 +128,7 @@ export default function VerifyScreen() {
       setAvatarUrl(url);
     } catch (e: any) {
       console.error('[verify] uploadAvatar failed', e);
-      Alert.alert('Upload fehlgeschlagen', e?.message ?? 'Unbekannter Fehler');
+      showAlert('Upload fehlgeschlagen', e?.message ?? 'Unbekannter Fehler');
     } finally {
       setUploading(false);
     }
@@ -129,7 +139,14 @@ export default function VerifyScreen() {
   }
 
   async function handleContinue() {
-    await refreshVerification();
+    if (continuing) return;
+    setContinuing(true);
+    // Lokaler Zustand ist vollständig (sonst wäre der Button nicht sichtbar):
+    // E-Mail ist in der Session bestätigt, avatar_url ist in der DB gesetzt.
+    // Der AuthGate in app/index.tsx prüft beim Mount frisch via isFullyVerified()
+    // — wir müssen hier nicht auf supabase.auth.refreshSession() warten, das auf
+    // Web gelegentlich hängt. Refresh trotzdem im Hintergrund anstoßen.
+    void refreshVerification().catch(() => {});
     router.replace('/');
   }
 
@@ -257,6 +274,7 @@ export default function VerifyScreen() {
             p={p}
             label="Los geht's"
             icon="arrow-forward"
+            loading={continuing}
             onPress={handleContinue}
             fullWidth
             style={{ marginTop: spacing.lg }}
@@ -268,7 +286,7 @@ export default function VerifyScreen() {
             label="Status erneut prüfen"
             icon="refresh"
             loading={refreshing}
-            onPress={refresh}
+            onPress={handleManualRefresh}
             fullWidth
             style={{ marginTop: spacing.lg }}
           />
