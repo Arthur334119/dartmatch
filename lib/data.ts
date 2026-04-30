@@ -208,20 +208,8 @@ export async function addReview(input: {
     created_at: new Date().toISOString(),
   });
   if (error) throw error;
-
-  // Bar-Rating neu berechnen (clientseitig — Trigger wäre besser, aber
-  // hier reicht es für die kleine Datenmenge).
-  const reviews = await getBarReviews(input.barId);
-  if (reviews.length > 0) {
-    const avg = reviews.reduce((a, r) => a + r.rating, 0) / reviews.length;
-    await supabase
-      .from(TABLES.bars)
-      .update({
-        rating: Number(avg.toFixed(1)),
-        review_count: reviews.length,
-      })
-      .eq('id', input.barId);
-  }
+  // bars.rating + review_count werden via Postgres-Trigger
+  // (recalc_bar_rating) automatisch aktualisiert.
 }
 
 // ── POSTS ─────────────────────────────────────────────────────────────
