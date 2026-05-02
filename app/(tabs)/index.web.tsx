@@ -27,6 +27,7 @@ import { BarCard } from '@/components/BarCard';
 import { BarCardSkeleton } from '@/components/Skeleton';
 import { haptic } from '@/lib/haptics';
 import { PressableButton } from '@/components/PressableButton';
+import { City, getCities, getMyCity, setMyCity } from '@/lib/cities';
 
 export default function MapScreenWeb() {
   const router = useRouter();
@@ -42,17 +43,24 @@ export default function MapScreenWeb() {
   const [maxBeerPrice, setMaxBeerPrice] = useState<number | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortMode, setSortMode] = useState<'rating' | 'name'>('rating');
+  const [cities, setCities] = useState<City[]>([]);
+  const [activeCityId, setActiveCityId] = useState<string | null>(null);
 
   useEffect(() => {
     getAllBars().then((all) => {
       setBars(all);
       setLoading(false);
     });
+    Promise.all([getCities(), getMyCity()]).then(([all, mine]) => {
+      setCities(all);
+      setActiveCityId(mine.id);
+    });
   }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     const result = bars.filter((b) => {
+      const matchCity = activeCityId == null || b.cityId === activeCityId;
       const matchGames =
         selectedGames.size === 0 || [...selectedGames].every((g) => b.games.includes(g));
       const matchFeatures =
@@ -62,14 +70,14 @@ export default function MapScreenWeb() {
         maxBeerPrice == null || (b.beerPrice != null && b.beerPrice <= maxBeerPrice);
       const matchSearch =
         !q || b.name.toLowerCase().includes(q) || b.address.toLowerCase().includes(q);
-      return matchGames && matchFeatures && matchPrice && matchSearch;
+      return matchCity && matchGames && matchFeatures && matchPrice && matchSearch;
     });
 
     if (sortMode === 'rating') {
       return [...result].sort((a, b) => b.rating - a.rating);
     }
     return [...result].sort((a, b) => a.name.localeCompare(b.name));
-  }, [bars, search, selectedGames, selectedFeatures, maxBeerPrice, sortMode]);
+  }, [bars, search, selectedGames, selectedFeatures, maxBeerPrice, sortMode, activeCityId]);
 
   const activeFilterCount =
     selectedGames.size + selectedFeatures.size + (maxBeerPrice != null ? 1 : 0);
@@ -123,6 +131,50 @@ export default function MapScreenWeb() {
           )}
         </TouchableOpacity>
       </View>
+
+      {cities.length > 1 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.cityRow}
+        >
+          {cities.map((c) => {
+            const active = activeCityId === c.id;
+            return (
+              <TouchableOpacity
+                key={c.id}
+                style={[
+                  styles.cityPill,
+                  {
+                    backgroundColor: active ? colors.primary : p.surfaceMuted,
+                  },
+                ]}
+                onPress={() => {
+                  if (active) return;
+                  haptic.selection();
+                  setActiveCityId(c.id);
+                  setMyCity(c.id).catch(() => {});
+                }}
+              >
+                <Ionicons
+                  name="location"
+                  size={13}
+                  color={active ? '#fff' : p.textMuted}
+                />
+                <Text
+                  style={{
+                    color: active ? '#fff' : p.text,
+                    fontWeight: active ? '800' : '600',
+                    fontSize: 13,
+                  }}
+                >
+                  {c.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
 
       <View style={styles.sortRow}>
         {(
@@ -411,6 +463,20 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   sortPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderRadius: radii.pill,
+  },
+  cityRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  cityPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,

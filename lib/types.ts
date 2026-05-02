@@ -17,6 +17,7 @@ export type Bar = {
   reviewCount: number;
   osmId: string | null;
   googlePlaceId: string | null;
+  cityId: string | null;
   distanceKm?: number;
 };
 
@@ -148,6 +149,7 @@ export function barFromRow(row: Record<string, any>): Bar {
     reviewCount: Number(row.review_count ?? 0),
     osmId: row.osm_id != null ? String(row.osm_id) : null,
     googlePlaceId: row.google_place_id != null ? String(row.google_place_id) : null,
+    cityId: row.city_id != null ? String(row.city_id) : null,
   };
 }
 
