@@ -270,3 +270,45 @@ export function subscribeIncomingMessages(
     supabase.removeChannel(channel);
   };
 }
+
+export type IncomingMessageEvent = {
+  message: ChatMessage;
+  senderUsername: string;
+  senderAvatarUrl: string | null;
+};
+
+/**
+ * Abonniert nur eingehende fremde Chat-Nachrichten (keine eigenen) und löst
+ * den Callback mit nachgeladenem Sender-Profil aus. Wird vom App-Root für
+ * den In-App-Banner genutzt.
+ */
+export function subscribeIncomingChatMessages(
+  myUserId: string,
+  onMessage: (e: IncomingMessageEvent) => void,
+): () => void {
+  const channel = supabase
+    .channel(`incoming-chat:${myUserId}`)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+      async (payload) => {
+        const row = payload.new as Record<string, any>;
+        if (!row || row.sender_id === myUserId) return;
+        const msg = rowToMessage(row);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('username, avatar_url')
+          .eq('id', msg.senderId)
+          .maybeSingle();
+        onMessage({
+          message: msg,
+          senderUsername: (profile as any)?.username ?? 'Jemand',
+          senderAvatarUrl: (profile as any)?.avatar_url ?? null,
+        });
+      },
+    )
+    .subscribe();
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
